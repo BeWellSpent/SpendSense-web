@@ -38,12 +38,12 @@ export function RegisterForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: res.accessToken }),
       })
-      logger.info('auth.register', { email })
+      logger.info('auth.register')
       router.push('/budgets')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed'
       setError(message)
-      logger.error('auth.register.failed', { email, error: message })
+      logger.error('auth.register.failed', { error: message })
     } finally {
       setLoading(false)
     }

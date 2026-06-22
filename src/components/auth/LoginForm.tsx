@@ -36,12 +36,12 @@ export function LoginForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: res.accessToken }),
       })
-      logger.info('auth.login', { email })
+      logger.info('auth.login')
       router.push('/budgets')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed'
       setError(message)
-      logger.error('auth.login.failed', { email, error: message })
+      logger.error('auth.login.failed', { error: message })
     } finally {
       setLoading(false)
     }

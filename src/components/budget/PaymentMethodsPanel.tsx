@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import { PaymentType } from '@/gen/spendsense/v1/common_pb'
+import type { PaymentMethod } from '@/gen/spendsense/v1/budget_pb'
 import { useClient } from '@/hooks/useClient'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { logger } from '@/lib/logger'
@@ -14,6 +15,7 @@ import ListItem from '@mui/material/ListItem'
 import ListItemText from '@mui/material/ListItemText'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -22,7 +24,11 @@ import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import AddIcon from '@mui/icons-material/Add'
+import EditIcon from '@mui/icons-material/Edit'
+import DeleteIcon from '@mui/icons-material/Delete'
 import CircularProgress from '@mui/material/CircularProgress'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 
 const PAYMENT_TYPES = [
   { value: PaymentType.CASH, label: 'Cash' },
@@ -38,11 +44,21 @@ interface Props {
   budgetId: string
 }
 
-export function PaymentMethodsPanel({ budgetId: _ }: Props) {
+export function PaymentMethodsPanel({ budgetId }: Props) {
   const { showError, showSuccess } = useSnackbar()
+  const theme = useTheme()
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+
   const [addOpen, setAddOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [type, setType] = useState<PaymentType>(PaymentType.DEBIT)
+  const [newName, setNewName] = useState('')
+  const [newType, setNewType] = useState<PaymentType>(PaymentType.DEBIT)
+
+  const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null)
+  const [editName, setEditName] = useState('')
+
+  const [deletingMethod, setDeletingMethod] = useState<PaymentMethod | null>(null)
+  const [replacementId, setReplacementId] = useState('')
+
   const client = useClient(BudgetService)
 
   const { data, isLoading, refetch } = useQuery({
@@ -50,17 +66,61 @@ export function PaymentMethodsPanel({ budgetId: _ }: Props) {
     queryFn: () => client.listPaymentMethods({}),
   })
 
-  const { mutateAsync, isPending } = useMutation({
+  const { mutateAsync: doCreate, isPending: isCreating } = useMutation({
     mutationFn: (vars: { name: string; type: PaymentType }) => client.createPaymentMethod(vars),
+  })
+
+  const { mutateAsync: doUpdate, isPending: isUpdating } = useMutation({
+    mutationFn: (vars: { id: string; name: string }) => client.updatePaymentMethod(vars),
+  })
+
+  const { mutateAsync: doDelete, isPending: isDeleting } = useMutation({
+    mutationFn: (vars: { id: string; replacementId: string; budgetId: string }) => client.deletePaymentMethod(vars),
   })
 
   async function handleCreate() {
     try {
-      await mutateAsync({ name, type })
-      logger.info('paymentMethod.create', { name })
-      showSuccess(`Payment method "${name}" added`)
-      setName('')
+      await doCreate({ name: newName, type: newType })
+      logger.info('paymentMethod.create', { name: newName })
+      showSuccess(`Payment method "${newName}" added`)
+      setNewName('')
       setAddOpen(false)
+      refetch()
+    } catch (err) {
+      showError(err)
+    }
+  }
+
+  function openEdit(method: PaymentMethod) {
+    setEditingMethod(method)
+    setEditName(method.name)
+  }
+
+  function openDelete(method: PaymentMethod) {
+    setDeletingMethod(method)
+    setReplacementId('')
+  }
+
+  async function handleDelete() {
+    if (!deletingMethod || !replacementId) return
+    try {
+      await doDelete({ id: deletingMethod.id, replacementId, budgetId })
+      logger.info('paymentMethod.deactivate', { id: deletingMethod.id, replacementId, budgetId })
+      showSuccess(`"${deletingMethod.name}" deactivated`)
+      setDeletingMethod(null)
+      refetch()
+    } catch (err) {
+      showError(err)
+    }
+  }
+
+  async function handleUpdate() {
+    if (!editingMethod) return
+    try {
+      await doUpdate({ id: editingMethod.id, name: editName })
+      logger.info('paymentMethod.update', { id: editingMethod.id, name: editName })
+      showSuccess(`Renamed to "${editName}"`)
+      setEditingMethod(null)
       refetch()
     } catch (err) {
       showError(err)
@@ -75,35 +135,149 @@ export function PaymentMethodsPanel({ budgetId: _ }: Props) {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
         <Typography variant="subtitle1" fontWeight={600}>Payment Methods</Typography>
-        <IconButton size="small" onClick={() => setAddOpen(true)}><AddIcon fontSize="small" /></IconButton>
+        <IconButton size="small" onClick={() => setAddOpen(true)}>
+          <AddIcon fontSize="small" />
+        </IconButton>
       </Box>
+
       {methods.length === 0 ? (
         <Typography variant="body2" color="text.secondary">No payment methods yet.</Typography>
       ) : (
         <List dense disablePadding>
           {methods.map((m) => (
-            <ListItem key={m.id} disableGutters>
+            <ListItem
+              key={m.id}
+              disableGutters
+              secondaryAction={
+                <Box>
+                  <Tooltip title="Rename">
+                    <IconButton size="small" onClick={() => openEdit(m)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Deactivate">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={() => openDelete(m)}
+                        disabled={methods.length <= 1}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Box>
+              }
+            >
               <ListItemText primary={m.name} />
-              <Chip label={PaymentType[m.type]} size="small" variant="outlined" />
+              <Chip label={PaymentType[m.type]} size="small" variant="outlined" sx={{ mr: 4 }} />
             </ListItem>
           ))}
         </List>
       )}
 
-      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="xs" fullWidth>
+      {/* Add dialog */}
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="xs" fullWidth fullScreen={fullScreen}>
         <DialogTitle>Add Payment Method</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth placeholder="e.g. Chase Visa" />
-            <TextField select label="Type" value={type} onChange={(e) => setType(Number(e.target.value) as PaymentType)} fullWidth>
-              {PAYMENT_TYPES.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+            <TextField
+              label="Name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              fullWidth
+              placeholder="e.g. Chase Visa"
+            />
+            <TextField
+              select
+              label="Type"
+              value={newType}
+              onChange={(e) => setNewType(Number(e.target.value) as PaymentType)}
+              fullWidth
+            >
+              {PAYMENT_TYPES.map((t) => (
+                <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+              ))}
             </TextField>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreate} disabled={!name.trim() || isPending}>
-            {isPending ? 'Adding…' : 'Add'}
+          <Button onClick={() => setAddOpen(false)} color="inherit">Cancel</Button>
+          <Button variant="contained" onClick={handleCreate} disabled={!newName.trim() || isCreating}>
+            {isCreating ? 'Adding…' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete dialog */}
+      <Dialog
+        open={deletingMethod !== null}
+        onClose={() => setDeletingMethod(null)}
+        maxWidth="xs"
+        fullWidth
+        fullScreen={fullScreen}
+      >
+        <DialogTitle>Deactivate payment method</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              <strong>{deletingMethod?.name}</strong> will be deactivated. Transactions in this budget will be reassigned to the selected method. Historical budgets are unaffected.
+            </Typography>
+            <TextField
+              select
+              label="Reassign transactions to"
+              value={replacementId}
+              onChange={(e) => setReplacementId(e.target.value)}
+              fullWidth
+            >
+              {methods
+                .filter((m) => m.id !== deletingMethod?.id)
+                .map((m) => (
+                  <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+                ))}
+            </TextField>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeletingMethod(null)} color="inherit">Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            disabled={!replacementId || isDeleting}
+          >
+            {isDeleting ? 'Deactivating…' : 'Deactivate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Rename dialog */}
+      <Dialog
+        open={editingMethod !== null}
+        onClose={() => setEditingMethod(null)}
+        maxWidth="xs"
+        fullWidth
+        fullScreen={fullScreen}
+      >
+        <DialogTitle>Rename payment method</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Name"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            fullWidth
+            sx={{ mt: 1 }}
+            placeholder="e.g. Chase Visa"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditingMethod(null)} color="inherit">Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleUpdate}
+            disabled={!editName.trim() || editName === editingMethod?.name || isUpdating}
+          >
+            {isUpdating ? 'Saving…' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>

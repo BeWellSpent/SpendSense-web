@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import { useClient } from '@/hooks/useClient'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
@@ -41,7 +41,7 @@ function TransactionTable({ budgetId, typeId, onDeleted }: { budgetId: string; t
   const { showError } = useSnackbar()
   const client = useClient(BudgetService)
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['transactions', budgetId, typeId],
     queryFn: () => client.listTransactions({ budgetId, transactionTypeId: typeId }),
   })
@@ -54,7 +54,6 @@ function TransactionTable({ budgetId, typeId, onDeleted }: { budgetId: string; t
     try {
       await doDelete(id)
       logger.info('transaction.delete', { budgetId, id })
-      refetch()
       onDeleted()
     } catch (err) {
       showError(err)
@@ -98,12 +97,12 @@ function TransactionTable({ budgetId, typeId, onDeleted }: { budgetId: string; t
 }
 
 export function TransactionsPanel({ budgetId }: Props) {
+  const queryClient = useQueryClient()
   const [viewMode, setViewMode] = useViewPreference('tabbed')
   const [addOpen, setAddOpen] = useState(false)
   const [tabIndex, setTabIndex] = useState(0)
-  const [refreshKey, setRefreshKey] = useState(0)
 
-  const refresh = () => setRefreshKey((k) => k + 1)
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['transactions', budgetId] })
 
   return (
     <Box>
@@ -132,7 +131,7 @@ export function TransactionsPanel({ budgetId }: Props) {
             <Tab label="Variable" />
           </Tabs>
           <TransactionTable
-            key={`${tabIndex}-${refreshKey}`}
+            key={tabIndex}
             budgetId={budgetId}
             typeId={tabIndex === 0 ? 1 : 2}
             onDeleted={refresh}
@@ -142,11 +141,11 @@ export function TransactionsPanel({ budgetId }: Props) {
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
           <Box>
             <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>FIXED</Typography>
-            <TransactionTable key={`fixed-${refreshKey}`} budgetId={budgetId} typeId={1} onDeleted={refresh} />
+            <TransactionTable budgetId={budgetId} typeId={1} onDeleted={refresh} />
           </Box>
           <Box>
             <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>VARIABLE</Typography>
-            <TransactionTable key={`variable-${refreshKey}`} budgetId={budgetId} typeId={2} onDeleted={refresh} />
+            <TransactionTable budgetId={budgetId} typeId={2} onDeleted={refresh} />
           </Box>
         </Box>
       )}

@@ -1,10 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
+import type { IncomeEntry } from '@/gen/spendsense/v1/budget_pb'
 import { useClient } from '@/hooks/useClient'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { logger } from '@/lib/logger'
+import { EditIncomeModal } from './modals/EditIncomeModal'
+import { AddIncomeDialog } from './modals/AddIncomeDialog'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import List from '@mui/material/List'
@@ -13,6 +17,8 @@ import ListItemText from '@mui/material/ListItemText'
 import IconButton from '@mui/material/IconButton'
 import CircularProgress from '@mui/material/CircularProgress'
 import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
+import AddIcon from '@mui/icons-material/Add'
 
 interface Props {
   budgetId: string
@@ -26,6 +32,8 @@ function formatMoney(units: bigint, nanos: number): string {
 export function IncomePanel({ budgetId }: Props) {
   const { showError } = useSnackbar()
   const client = useClient(BudgetService)
+  const [editingEntry, setEditingEntry] = useState<IncomeEntry | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['income', budgetId],
@@ -54,7 +62,12 @@ export function IncomePanel({ budgetId }: Props) {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
-        <Typography variant="subtitle1" fontWeight={600}>Income</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography variant="subtitle1" fontWeight={600}>Income</Typography>
+          <IconButton size="small" onClick={() => setAddOpen(true)}>
+            <AddIcon fontSize="small" />
+          </IconButton>
+        </Box>
         <Typography variant="subtitle2" color="success.main">
           {total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} / mo
         </Typography>
@@ -68,9 +81,14 @@ export function IncomePanel({ budgetId }: Props) {
               key={entry.id.toString()}
               disableGutters
               secondaryAction={
-                <IconButton size="small" onClick={() => handleDelete(entry.id)}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
+                <Box>
+                  <IconButton size="small" onClick={() => setEditingEntry(entry)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => handleDelete(entry.id)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
               }
             >
               <ListItemText
@@ -80,6 +98,26 @@ export function IncomePanel({ budgetId }: Props) {
             </ListItem>
           ))}
         </List>
+      )}
+
+      {addOpen && (
+        <AddIncomeDialog
+          budgetId={budgetId}
+          onClose={() => setAddOpen(false)}
+          onDone={() => { setAddOpen(false); refetch() }}
+        />
+      )}
+
+      {editingEntry && (
+        <EditIncomeModal
+          budgetId={budgetId}
+          entry={editingEntry}
+          onClose={() => setEditingEntry(null)}
+          onDone={() => {
+            setEditingEntry(null)
+            refetch()
+          }}
+        />
       )}
     </Box>
   )
