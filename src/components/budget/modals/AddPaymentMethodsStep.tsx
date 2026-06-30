@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import { PaymentType } from '@/gen/spendsense/v1/common_pb'
@@ -63,7 +63,7 @@ export function AddPaymentMethodsStep({ budgetProfileId, onSkip, onDone }: Props
     queryKey: ['budget-people', budgetProfileId],
     queryFn: () => client.listBudgetPeople({ budgetProfileId }),
   })
-  const people = peopleData?.people ?? []
+  const people = useMemo(() => peopleData?.people ?? [], [peopleData])
 
   // Pre-select the first person (the owner) once people load
   useEffect(() => {

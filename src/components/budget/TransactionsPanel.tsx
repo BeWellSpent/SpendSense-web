@@ -123,6 +123,32 @@ function compareTransactions(
   return 0
 }
 
+function SortHeader({
+  col,
+  sortKey,
+  sortDir,
+  onSort,
+  children,
+}: {
+  col: SortKey
+  sortKey: SortKey
+  sortDir: 'asc' | 'desc'
+  onSort: (key: SortKey) => void
+  children: React.ReactNode
+}) {
+  return (
+    <TableCell sortDirection={sortKey === col ? sortDir : false}>
+      <TableSortLabel
+        active={sortKey === col}
+        direction={sortKey === col ? sortDir : 'asc'}
+        onClick={() => onSort(col)}
+      >
+        {children}
+      </TableSortLabel>
+    </TableCell>
+  )
+}
+
 interface TableProps {
   transactions: Transaction[]
   isLoading: boolean
@@ -183,30 +209,16 @@ function TransactionTable({
 
   if (isLoading) return <CircularProgress size={20} />
 
-  function SortHeader({ col, children }: { col: SortKey; children: React.ReactNode }) {
-    return (
-      <TableCell sortDirection={sortKey === col ? sortDir : false}>
-        <TableSortLabel
-          active={sortKey === col}
-          direction={sortKey === col ? sortDir : 'asc'}
-          onClick={() => handleSort(col)}
-        >
-          {children}
-        </TableSortLabel>
-      </TableCell>
-    )
-  }
-
   return (
     <Box sx={{ overflowX: 'auto' }}>
       <Table size="small" sx={{ minWidth: 560 }}>
         <TableHead>
           <TableRow>
-            <SortHeader col="name">Item</SortHeader>
-            <SortHeader col="day">Day</SortHeader>
-            <SortHeader col="category">Category</SortHeader>
-            <SortHeader col="method">Payment Method</SortHeader>
-            <SortHeader col="owner">Owner</SortHeader>
+            <SortHeader col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>Item</SortHeader>
+            <SortHeader col="day" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>Day</SortHeader>
+            <SortHeader col="category" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>Category</SortHeader>
+            <SortHeader col="method" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>Payment Method</SortHeader>
+            <SortHeader col="owner" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>Owner</SortHeader>
             <TableCell align="right" sortDirection={sortKey === 'amount' ? sortDir : false}>
               <TableSortLabel
                 active={sortKey === 'amount'}

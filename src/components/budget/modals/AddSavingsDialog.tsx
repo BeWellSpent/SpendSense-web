@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import { RecurringType } from '@/gen/spendsense/v1/common_pb'
@@ -49,7 +49,7 @@ export function AddSavingsDialog({ budgetProfileId, onClose, onDone }: Props) {
     queryKey: ['budget-people', budgetProfileId],
     queryFn: () => client.listBudgetPeople({ budgetProfileId }),
   })
-  const people = peopleData?.people ?? []
+  const people = useMemo(() => peopleData?.people ?? [], [peopleData])
 
   useEffect(() => {
     if (people.length > 0 && budgetPersonId === 0n) {
