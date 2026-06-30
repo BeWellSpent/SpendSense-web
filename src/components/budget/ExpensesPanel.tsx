@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TableFooter from '@mui/material/TableFooter'
@@ -264,10 +265,11 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
     <Box>
       <Typography variant="subtitle1" fontWeight={600} mb={1}>Expense Plan</Typography>
 
+      <TableContainer sx={{ overflowX: 'auto' }}>
       <Table size="small" sx={{ tableLayout: 'auto' }}>
         <TableHead>
           <TableRow>
-            <TableCell rowSpan={2} sx={{ fontWeight: 600, verticalAlign: 'bottom' }}>Category</TableCell>
+            <TableCell rowSpan={2} sx={{ fontWeight: 600, verticalAlign: 'bottom', whiteSpace: 'nowrap' }}>Category</TableCell>
             <TableCell
               colSpan={people.length + 1}
               align="center"
@@ -306,7 +308,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
               const color = actualColor(actual, plannedTotal)
               return (
                 <TableRow key={cat.id} hover>
-                  <TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       {cat.color && (
                         <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: cat.color, flexShrink: 0 }} />
@@ -379,6 +381,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
           </TableFooter>
         )}
       </Table>
+      </TableContainer>
 
       {addableCategories.length > 0 && (
         <Autocomplete
@@ -404,10 +407,11 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
           <Typography variant="subtitle2" fontWeight={600} color="text.secondary" mb={1}>
             Committed Savings
           </Typography>
+          <TableContainer sx={{ overflowX: 'auto' }}>
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell rowSpan={2} sx={{ fontWeight: 600, verticalAlign: 'bottom' }}>Source</TableCell>
+                <TableCell rowSpan={2} sx={{ fontWeight: 600, verticalAlign: 'bottom', whiteSpace: 'nowrap' }}>Source</TableCell>
                 <TableCell
                   colSpan={people.length + 1}
                   align="center"
@@ -434,7 +438,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                   const monthly = amt * mult
                   return (
                     <TableRow key={s.id.toString()}>
-                      <TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           {s.name}
                           {s.isTaxReserve && (
@@ -464,6 +468,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
               </TableRow>
             </TableFooter>
           </Table>
+          </TableContainer>
         </Box>
       )}
 
