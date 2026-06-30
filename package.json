@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack -H 0.0.0.0",
+    "prebuild": "npm run generate",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint src/",
@@ -27,6 +28,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@bufbuild/buf": "^1.71.0",
     "@bufbuild/protoc-gen-es": "^1.10.0",
     "@connectrpc/protoc-gen-connect-es": "^1.6.1",
     "@testing-library/jest-dom": "^6.9.1",
