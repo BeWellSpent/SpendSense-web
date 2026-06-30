@@ -1,0 +1,57 @@
+{
+  "auth": {
+    "login": {
+      "title": "Iniciar sesión en SpendSense",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "rememberMe": "Recordarme por 30 días",
+      "submit": "Iniciar sesión",
+      "submitting": "Iniciando sesión…",
+      "googleBtn": "Continuar con Google",
+      "googleUnavailable": "El inicio de sesión con Google aún no está disponible",
+      "noAccount": "¿No tienes cuenta?",
+      "createOne": "Crear una"
+    },
+    "register": {
+      "title": "Crear tu cuenta en SpendSense",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "passwordHint": "8+ caracteres con mayúsculas, minúsculas, dígito y carácter especial",
+      "country": "País",
+      "preferNotToSay": "Prefiero no decirlo",
+      "state": "Estado",
+      "selectState": "— Seleccionar estado —",
+      "filingStatus": "Estado civil fiscal",
+      "selectFilingStatus": "— Seleccionar estado civil fiscal —",
+      "submit": "Crear cuenta",
+      "submitting": "Creando cuenta…",
+      "googleBtn": "Continuar con Google",
+      "googleUnavailable": "El inicio de sesión con Google aún no está disponible",
+      "hasAccount": "¿Ya tienes cuenta?",
+      "signIn": "Iniciar sesión"
+    },
+    "language": "Idioma",
+    "currency": "Moneda"
+  },
+  "settings": {
+    "title": "Perfil",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "email": "Correo electrónico",
+    "emailReadOnly": "El correo electrónico no se puede cambiar",
+    "country": "País",
+    "notSet": "— No establecido —",
+    "state": "Estado",
+    "taxSettings": "Configuración de impuestos (EE.UU.)",
+    "filingStatus": "Estado civil fiscal",
+    "taxFrequency": "Frecuencia de pago de impuestos",
+    "taxNote": "Esta configuración se usa para estimar tus ahorros de reserva fiscal en cada período presupuestario.",
+    "language": "Idioma",
+    "currency": "Moneda",
+    "save": "Guardar cambios",
+    "saving": "Guardando…",
+    "saved": "Perfil guardado."
+  }
+}

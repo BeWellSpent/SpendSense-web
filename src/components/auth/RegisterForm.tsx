@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
 import { createClient } from '@connectrpc/connect'
 import { AuthService } from '@/gen/spendsense/v1/auth_connect'
 import { UserService } from '@/gen/spendsense/v1/user_connect'
@@ -51,7 +52,21 @@ const FILING_STATUS_OPTIONS = [
   { value: FilingStatus.QUALIFYING_SURVIVING_SPOUSE, label: 'Qualifying Surviving Spouse' },
 ]
 
+const LANGUAGE_OPTIONS = [
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+]
+
+const CURRENCY_OPTIONS = [
+  { value: 'USD', label: 'USD — US Dollar' },
+  { value: 'ARS', label: 'ARS — Argentine Peso' },
+  { value: 'EUR', label: 'EUR — Euro' },
+]
+
 export function RegisterForm() {
+  const t = useTranslations('auth.register')
+  const tCommon = useTranslations('auth')
+  const locale = useLocale()
   const router = useRouter()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -60,6 +75,8 @@ export function RegisterForm() {
   const [countryCode, setCountryCode] = useState('')
   const [stateCode, setStateCode] = useState('')
   const [filingStatus, setFilingStatus] = useState<FilingStatus>(FilingStatus.UNSPECIFIED)
+  const [language, setLanguage] = useState(locale)
+  const [currency, setCurrency] = useState('USD')
   const [countries, setCountries] = useState<{ code: string; name: string }[]>([])
   const [countriesLoading, setCountriesLoading] = useState(true)
   const [error, setError] = useState('')
@@ -78,6 +95,8 @@ export function RegisterForm() {
   async function handleGoogleSignIn() {
     const state = crypto.randomUUID()
     sessionStorage.setItem('google_oauth_state', state)
+    localStorage.setItem('spendsense_locale', language)
+    localStorage.setItem('spendsense_currency', currency)
     try {
       const res = await authClient.getGoogleAuthURL({ state })
       window.location.href = res.url
@@ -93,7 +112,9 @@ export function RegisterForm() {
     setError('')
     setLoading(true)
     try {
-      const res = await authClient.register({ firstName, lastName, email, password, countryCode, stateCode })
+      const res = await authClient.register({
+        firstName, lastName, email, password, countryCode, stateCode, language, currency,
+      })
 
       // Persist filing status before setting the cookie so profile is complete on first load
       if (countryCode === 'US' && filingStatus !== FilingStatus.UNSPECIFIED) {
@@ -105,6 +126,8 @@ export function RegisterForm() {
           stateCode,
           filingStatus,
           taxPaymentFrequency: 0,
+          language,
+          currency,
         }).catch((err) => {
           logger.error('register.updateFilingStatus.failed', { error: err instanceof Error ? err.message : String(err) })
         })
@@ -115,8 +138,10 @@ export function RegisterForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: res.accessToken }),
       })
+      localStorage.setItem('spendsense_locale', language)
+      localStorage.setItem('spendsense_currency', currency)
       logger.info('auth.register')
-      router.push('/budgets')
+      router.push('/budgets', { locale: language })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed'
       setError(message)
@@ -131,22 +156,49 @@ export function RegisterForm() {
   return (
     <Stack component="form" onSubmit={handleSubmit} spacing={2}>
       <Stack direction="row" spacing={2}>
+        <FormControl fullWidth size="small">
+          <InputLabel>{tCommon('language')}</InputLabel>
+          <Select
+            label={tCommon('language')}
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+          >
+            {LANGUAGE_OPTIONS.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl fullWidth size="small">
+          <InputLabel>{tCommon('currency')}</InputLabel>
+          <Select
+            label={tCommon('currency')}
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+          >
+            {CURRENCY_OPTIONS.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
+
+      <Stack direction="row" spacing={2}>
         <TextField
-          label="First name"
+          label={t('firstName')}
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
           required
           fullWidth
         />
         <TextField
-          label="Last name"
+          label={t('lastName')}
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
           fullWidth
         />
       </Stack>
       <TextField
-        label="Email"
+        label={t('email')}
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -155,20 +207,20 @@ export function RegisterForm() {
         autoComplete="email"
       />
       <TextField
-        label="Password"
+        label={t('password')}
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         required
         fullWidth
         autoComplete="new-password"
-        helperText="8+ characters with uppercase, lowercase, digit, and special character"
+        helperText={t('passwordHint')}
       />
 
       <FormControl fullWidth size="small" disabled={countriesLoading}>
-        <InputLabel>Country</InputLabel>
+        <InputLabel>{t('country')}</InputLabel>
         <Select
-          label="Country"
+          label={t('country')}
           value={countryCode}
           onChange={(e) => { setCountryCode(e.target.value); setStateCode(''); setFilingStatus(FilingStatus.UNSPECIFIED) }}
           endAdornment={
@@ -179,7 +231,7 @@ export function RegisterForm() {
             ) : undefined
           }
         >
-          <MenuItem value="">Prefer not to say</MenuItem>
+          <MenuItem value="">{t('preferNotToSay')}</MenuItem>
           {countries.map((c) => (
             <MenuItem key={c.code} value={c.code}>{c.name}</MenuItem>
           ))}
@@ -188,13 +240,13 @@ export function RegisterForm() {
 
       {isUS && (
         <FormControl fullWidth size="small">
-          <InputLabel>State</InputLabel>
+          <InputLabel>{t('state')}</InputLabel>
           <Select
-            label="State"
+            label={t('state')}
             value={stateCode}
             onChange={(e) => setStateCode(e.target.value)}
           >
-            <MenuItem value="">— Select state —</MenuItem>
+            <MenuItem value="">{t('selectState')}</MenuItem>
             {US_STATES.map(([code, name]) => (
               <MenuItem key={code} value={code}>{name}</MenuItem>
             ))}
@@ -204,13 +256,13 @@ export function RegisterForm() {
 
       {isUS && (
         <FormControl fullWidth size="small">
-          <InputLabel>Filing status</InputLabel>
+          <InputLabel>{t('filingStatus')}</InputLabel>
           <Select
-            label="Filing status"
+            label={t('filingStatus')}
             value={filingStatus}
             onChange={(e) => setFilingStatus(e.target.value as FilingStatus)}
           >
-            <MenuItem value={FilingStatus.UNSPECIFIED}>— Select filing status —</MenuItem>
+            <MenuItem value={FilingStatus.UNSPECIFIED}>{t('selectFilingStatus')}</MenuItem>
             {FILING_STATUS_OPTIONS.map((opt) => (
               <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
             ))}
@@ -224,29 +276,29 @@ export function RegisterForm() {
         </Typography>
       )}
       <Button type="submit" variant="contained" fullWidth disabled={loading}>
-        {loading ? 'Creating account…' : 'Create account'}
+        {loading ? t('submitting') : t('submit')}
       </Button>
 
       <Divider>or</Divider>
 
       {isEnabled('googleAuth') ? (
         <Button variant="outlined" fullWidth onClick={handleGoogleSignIn} disabled={loading}>
-          Continue with Google
+          {t('googleBtn')}
         </Button>
       ) : (
-        <Tooltip title="Google sign-in is not available yet" placement="top">
+        <Tooltip title={t('googleUnavailable')} placement="top">
           <span>
             <Button variant="outlined" fullWidth disabled sx={{ pointerEvents: 'none', opacity: 0.5 }}>
-              Continue with Google
+              {t('googleBtn')}
             </Button>
           </span>
         </Tooltip>
       )}
 
       <Typography variant="body2" textAlign="center">
-        Already have an account?{' '}
-        <Link component={NextLink} href="/login">
-          Sign in
+        {t('hasAccount')}{' '}
+        <Link component={NextLink} href={`/${language}/login`}>
+          {t('signIn')}
         </Link>
       </Typography>
     </Stack>

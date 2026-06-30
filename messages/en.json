@@ -1,0 +1,57 @@
+{
+  "auth": {
+    "login": {
+      "title": "Sign in to SpendSense",
+      "email": "Email",
+      "password": "Password",
+      "rememberMe": "Remember me for 30 days",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "googleBtn": "Continue with Google",
+      "googleUnavailable": "Google sign-in is not available yet",
+      "noAccount": "No account?",
+      "createOne": "Create one"
+    },
+    "register": {
+      "title": "Create your SpendSense account",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "password": "Password",
+      "passwordHint": "8+ characters with uppercase, lowercase, digit, and special character",
+      "country": "Country",
+      "preferNotToSay": "Prefer not to say",
+      "state": "State",
+      "selectState": "— Select state —",
+      "filingStatus": "Filing status",
+      "selectFilingStatus": "— Select filing status —",
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "googleBtn": "Continue with Google",
+      "googleUnavailable": "Google sign-in is not available yet",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign in"
+    },
+    "language": "Language",
+    "currency": "Currency"
+  },
+  "settings": {
+    "title": "Profile",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email",
+    "emailReadOnly": "Email cannot be changed",
+    "country": "Country",
+    "notSet": "— Not set —",
+    "state": "State",
+    "taxSettings": "Tax settings (US)",
+    "filingStatus": "Filing status",
+    "taxFrequency": "Tax payment frequency",
+    "taxNote": "These settings are used to estimate your tax reserve savings each budget period.",
+    "language": "Language",
+    "currency": "Currency",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "saved": "Profile saved."
+  }
+}

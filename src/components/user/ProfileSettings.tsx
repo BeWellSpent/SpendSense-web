@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { UserService } from '@/gen/spendsense/v1/user_connect'
 import { FilingStatus, TaxPaymentFrequency } from '@/gen/spendsense/v1/common_pb'
@@ -56,7 +57,19 @@ const TAX_FREQUENCY_OPTIONS = [
   { value: TaxPaymentFrequency.ANNUAL, label: 'Annual' },
 ]
 
+const LANGUAGE_OPTIONS = [
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+]
+
+const CURRENCY_OPTIONS = [
+  { value: 'USD', label: 'USD — US Dollar' },
+  { value: 'ARS', label: 'ARS — Argentine Peso' },
+  { value: 'EUR', label: 'EUR — Euro' },
+]
+
 export function ProfileSettings() {
+  const t = useTranslations('settings')
   const router = useRouter()
   const client = useClient(UserService)
   const { showError } = useSnackbar()
@@ -74,6 +87,8 @@ export function ProfileSettings() {
   const [stateCode, setStateCode] = useState('')
   const [filingStatus, setFilingStatus] = useState<FilingStatus>(FilingStatus.UNSPECIFIED)
   const [taxFrequency, setTaxFrequency] = useState<TaxPaymentFrequency>(TaxPaymentFrequency.UNSPECIFIED)
+  const [language, setLanguage] = useState('en')
+  const [currency, setCurrency] = useState('USD')
   const [countries, setCountries] = useState<{ code: string; name: string }[]>([])
   const [countriesLoading, setCountriesLoading] = useState(true)
 
@@ -85,6 +100,8 @@ export function ProfileSettings() {
       setStateCode(user.stateCode)
       setFilingStatus(user.filingStatus)
       setTaxFrequency(user.taxPaymentFrequency)
+      setLanguage(user.language || 'en')
+      setCurrency(user.currency || 'USD')
     }
   }, [user])
 
@@ -101,15 +118,21 @@ export function ProfileSettings() {
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: () =>
-      client.updateMe({ firstName, lastName, countryCode, stateCode, filingStatus, taxPaymentFrequency: taxFrequency }),
+      client.updateMe({ firstName, lastName, countryCode, stateCode, filingStatus, taxPaymentFrequency: taxFrequency, language, currency }),
   })
 
   async function handleSave() {
     try {
       await mutateAsync()
+      localStorage.setItem('spendsense_locale', language)
+      localStorage.setItem('spendsense_currency', currency)
       logger.info('user.profile.update')
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
+      // If language changed, navigate to the new locale's settings page
+      if (language !== user?.language) {
+        router.push('/settings', { locale: language })
+      }
     } catch (err) {
       showError(err)
     }
@@ -125,19 +148,19 @@ export function ProfileSettings() {
         <IconButton onClick={() => router.back()} size="small">
           <ArrowBackIcon />
         </IconButton>
-        <Typography variant="h6" fontWeight={700}>Profile</Typography>
+        <Typography variant="h6" fontWeight={700}>{t('title')}</Typography>
       </Box>
 
       <Stack spacing={2}>
         <Stack direction="row" spacing={2}>
           <TextField
-            label="First name"
+            label={t('firstName')}
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             fullWidth
           />
           <TextField
-            label="Last name"
+            label={t('lastName')}
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             fullWidth
@@ -145,17 +168,44 @@ export function ProfileSettings() {
         </Stack>
 
         <TextField
-          label="Email"
+          label={t('email')}
           value={user?.email ?? ''}
           fullWidth
           disabled
-          helperText="Email cannot be changed"
+          helperText={t('emailReadOnly')}
         />
 
+        <Stack direction="row" spacing={2}>
+          <FormControl fullWidth size="small">
+            <InputLabel>{t('language')}</InputLabel>
+            <Select
+              label={t('language')}
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+            >
+              {LANGUAGE_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth size="small">
+            <InputLabel>{t('currency')}</InputLabel>
+            <Select
+              label={t('currency')}
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+            >
+              {CURRENCY_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
+
         <FormControl fullWidth size="small" disabled={countriesLoading}>
-          <InputLabel>Country</InputLabel>
+          <InputLabel>{t('country')}</InputLabel>
           <Select
-            label="Country"
+            label={t('country')}
             value={countryCode}
             onChange={(e) => { setCountryCode(e.target.value); setStateCode('') }}
             endAdornment={
@@ -166,7 +216,7 @@ export function ProfileSettings() {
               ) : undefined
             }
           >
-            <MenuItem value="">— Not set —</MenuItem>
+            <MenuItem value="">{t('notSet')}</MenuItem>
             {countries.map((c) => (
               <MenuItem key={c.code} value={c.code}>{c.name}</MenuItem>
             ))}
@@ -175,13 +225,13 @@ export function ProfileSettings() {
 
         {isUS && (
           <FormControl fullWidth size="small">
-            <InputLabel>State</InputLabel>
+            <InputLabel>{t('state')}</InputLabel>
             <Select
-              label="State"
+              label={t('state')}
               value={stateCode}
               onChange={(e) => setStateCode(e.target.value)}
             >
-              <MenuItem value="">— Not set —</MenuItem>
+              <MenuItem value="">{t('notSet')}</MenuItem>
               {US_STATES.map(([code, name]) => (
                 <MenuItem key={code} value={code}>{name}</MenuItem>
               ))}
@@ -192,17 +242,17 @@ export function ProfileSettings() {
         {isUS && (
           <>
             <Divider>
-              <Typography variant="caption" color="text.secondary">Tax settings (US)</Typography>
+              <Typography variant="caption" color="text.secondary">{t('taxSettings')}</Typography>
             </Divider>
 
             <FormControl fullWidth size="small">
-              <InputLabel>Filing status</InputLabel>
+              <InputLabel>{t('filingStatus')}</InputLabel>
               <Select
-                label="Filing status"
+                label={t('filingStatus')}
                 value={filingStatus}
                 onChange={(e) => setFilingStatus(e.target.value as FilingStatus)}
               >
-                <MenuItem value={FilingStatus.UNSPECIFIED}>— Not set —</MenuItem>
+                <MenuItem value={FilingStatus.UNSPECIFIED}>{t('notSet')}</MenuItem>
                 {FILING_STATUS_OPTIONS.map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
                 ))}
@@ -210,13 +260,13 @@ export function ProfileSettings() {
             </FormControl>
 
             <FormControl fullWidth size="small">
-              <InputLabel>Tax payment frequency</InputLabel>
+              <InputLabel>{t('taxFrequency')}</InputLabel>
               <Select
-                label="Tax payment frequency"
+                label={t('taxFrequency')}
                 value={taxFrequency}
                 onChange={(e) => setTaxFrequency(e.target.value as TaxPaymentFrequency)}
               >
-                <MenuItem value={TaxPaymentFrequency.UNSPECIFIED}>— Not set —</MenuItem>
+                <MenuItem value={TaxPaymentFrequency.UNSPECIFIED}>{t('notSet')}</MenuItem>
                 {TAX_FREQUENCY_OPTIONS.map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
                 ))}
@@ -224,12 +274,12 @@ export function ProfileSettings() {
             </FormControl>
 
             <Typography variant="caption" color="text.secondary">
-              These settings are used to estimate your tax reserve savings each budget period.
+              {t('taxNote')}
             </Typography>
           </>
         )}
 
-        {saved && <Alert severity="success">Profile saved.</Alert>}
+        {saved && <Alert severity="success">{t('saved')}</Alert>}
 
         <Button
           variant="contained"
@@ -237,7 +287,7 @@ export function ProfileSettings() {
           disabled={isPending}
           sx={{ alignSelf: 'flex-start' }}
         >
-          {isPending ? 'Saving…' : 'Save changes'}
+          {isPending ? t('saving') : t('save')}
         </Button>
       </Stack>
     </Box>

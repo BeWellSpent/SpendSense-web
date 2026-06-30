@@ -25,7 +25,7 @@ import DialogActions from '@mui/material/DialogActions'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { BudgetSetupFlow } from './BudgetSetupFlow'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/i18n/navigation'
 
 function DeleteConfirmDialog({
   budget,

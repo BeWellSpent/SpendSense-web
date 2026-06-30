@@ -1,12 +1,24 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RegisterForm } from '../RegisterForm'
+import en from '../../../../messages/en.json'
 
 // ── mocks ─────────────────────────────────────────────────────────────────────
 
 const mockPush = jest.fn()
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+}))
+
+type Messages = Record<string, unknown>
+jest.mock('next-intl', () => ({
+  useTranslations: (namespace: string) => (key: string) => {
+    const parts = [...namespace.split('.'), key]
+    let val: unknown = en
+    for (const p of parts) val = (val as Messages)?.[p]
+    return typeof val === 'string' ? val : key
+  },
+  useLocale: () => 'en',
 }))
 
 let mockRegister: jest.Mock
@@ -32,6 +44,7 @@ beforeEach(() => {
   mockRegister = jest.fn()
   mockListCountries = jest.fn().mockResolvedValue({ countries: [] })
   global.fetch = jest.fn().mockResolvedValue({ ok: true })
+  localStorage.clear()
 })
 
 async function fillAndSubmit(overrides: { firstName?: string; email?: string; password?: string } = {}) {
@@ -56,7 +69,7 @@ describe('RegisterForm', () => {
     expect(screen.getByRole('button', { name: /continue with google/i })).toBeDisabled()
   })
 
-  it('calls the register RPC with name, email, and password', async () => {
+  it('calls the register RPC with name, email, password, language, and currency', async () => {
     mockRegister.mockResolvedValueOnce({ accessToken: 'tok' })
     render(<RegisterForm />)
     await fillAndSubmit()
@@ -65,6 +78,8 @@ describe('RegisterForm', () => {
         firstName: 'Jane',
         email: 'jane@example.com',
         password: 'Secret1!',
+        language: 'en',
+        currency: 'USD',
       }))
     })
   })
@@ -85,7 +100,9 @@ describe('RegisterForm', () => {
     mockRegister.mockResolvedValueOnce({ accessToken: 'tok' })
     render(<RegisterForm />)
     await fillAndSubmit()
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/budgets'))
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith('/budgets', expect.objectContaining({ locale: 'en' }))
+    )
   })
 
   it('shows an error message when registration fails', async () => {

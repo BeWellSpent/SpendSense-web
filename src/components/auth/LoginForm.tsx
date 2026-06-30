@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
 import { createClient } from '@connectrpc/connect'
 import { AuthService } from '@/gen/spendsense/v1/auth_connect'
 import { publicTransport } from '@/lib/api/client'
@@ -17,20 +18,41 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Checkbox from '@mui/material/Checkbox'
 import Link from '@mui/material/Link'
 import NextLink from 'next/link'
+import Select from '@mui/material/Select'
+import MenuItem from '@mui/material/MenuItem'
+import InputLabel from '@mui/material/InputLabel'
+import FormControl from '@mui/material/FormControl'
 
 const authClient = createClient(AuthService, publicTransport)
 
+const LANGUAGE_OPTIONS = [
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+]
+
 export function LoginForm() {
+  const t = useTranslations('auth.login')
+  const tCommon = useTranslations('auth')
+  const locale = useLocale()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
+  const [language, setLanguage] = useState(locale)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  function handleLanguageChange(newLang: string) {
+    setLanguage(newLang)
+    // Switch the page locale immediately
+    router.replace('/login', { locale: newLang })
+  }
 
   async function handleGoogleSignIn() {
     const state = crypto.randomUUID()
     sessionStorage.setItem('google_oauth_state', state)
+    // Persist locale preference for the callback page
+    localStorage.setItem('spendsense_locale', language)
     try {
       const res = await authClient.getGoogleAuthURL({ state })
       window.location.href = res.url
@@ -52,8 +74,13 @@ export function LoginForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: res.accessToken, rememberMe }),
       })
+      // Store locale/currency for use throughout the app
+      const userLocale = res.language || language
+      const userCurrency = res.currency || 'USD'
+      localStorage.setItem('spendsense_locale', userLocale)
+      localStorage.setItem('spendsense_currency', userCurrency)
       logger.info('auth.login')
-      router.push('/budgets')
+      router.push('/budgets', { locale: userLocale })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed'
       setError(message)
@@ -65,8 +92,21 @@ export function LoginForm() {
 
   return (
     <Stack component="form" onSubmit={handleSubmit} spacing={2}>
+      <FormControl fullWidth size="small">
+        <InputLabel>{tCommon('language')}</InputLabel>
+        <Select
+          label={tCommon('language')}
+          value={language}
+          onChange={(e) => handleLanguageChange(e.target.value)}
+        >
+          {LANGUAGE_OPTIONS.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
       <TextField
-        label="Email"
+        label={t('email')}
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -75,7 +115,7 @@ export function LoginForm() {
         autoComplete="email"
       />
       <TextField
-        label="Password"
+        label={t('password')}
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
@@ -85,7 +125,7 @@ export function LoginForm() {
       />
       <FormControlLabel
         control={<Checkbox checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} size="small" />}
-        label={<Typography variant="body2">Remember me for 30 days</Typography>}
+        label={<Typography variant="body2">{t('rememberMe')}</Typography>}
       />
       {error && (
         <Typography variant="body2" color="error">
@@ -93,29 +133,29 @@ export function LoginForm() {
         </Typography>
       )}
       <Button type="submit" variant="contained" fullWidth disabled={loading}>
-        {loading ? 'Signing in…' : 'Sign in'}
+        {loading ? t('submitting') : t('submit')}
       </Button>
 
       <Divider>or</Divider>
 
       {isEnabled('googleAuth') ? (
         <Button variant="outlined" fullWidth onClick={handleGoogleSignIn} disabled={loading}>
-          Continue with Google
+          {t('googleBtn')}
         </Button>
       ) : (
-        <Tooltip title="Google sign-in is not available yet" placement="top">
+        <Tooltip title={t('googleUnavailable')} placement="top">
           <span>
             <Button variant="outlined" fullWidth disabled sx={{ pointerEvents: 'none', opacity: 0.5 }}>
-              Continue with Google
+              {t('googleBtn')}
             </Button>
           </span>
         </Tooltip>
       )}
 
       <Typography variant="body2" textAlign="center">
-        No account?{' '}
-        <Link component={NextLink} href="/register">
-          Create one
+        {t('noAccount')}{' '}
+        <Link component={NextLink} href={`/${language}/register`}>
+          {t('createOne')}
         </Link>
       </Typography>
     </Stack>

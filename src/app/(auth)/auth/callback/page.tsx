@@ -37,23 +37,28 @@ function CallbackContent() {
     }
 
     const redirectUri = `${window.location.origin}/auth/callback`
+    const language = localStorage.getItem('spendsense_locale') || 'en'
+    const currency = localStorage.getItem('spendsense_currency') || 'USD'
 
-    authClient.exchangeGoogleCode({ code, redirectUri })
+    authClient.exchangeGoogleCode({ code, redirectUri, language, currency })
       .then(async (res) => {
         await fetch('/api/auth/set-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: res.accessToken }),
         })
+        const userLocale = res.language || language
+        const userCurrency = res.currency || currency
+        localStorage.setItem('spendsense_locale', userLocale)
+        localStorage.setItem('spendsense_currency', userCurrency)
         logger.info('auth.google.callback', { isNewUser: res.isNewUser })
-        router.push('/budgets')
+        router.push(`/${userLocale}/budgets`)
       })
       .catch((err) => {
         const message = err instanceof Error ? err.message : 'Google sign-in failed'
         logger.error('auth.google.callback.failed', { error: message })
         setError(message)
       })
-  // searchParams identity is stable; router is stable — this runs once on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -61,7 +66,7 @@ function CallbackContent() {
     return (
       <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
         <Typography color="error">{error}</Typography>
-        <Link component={NextLink} href="/login" variant="body2">
+        <Link component={NextLink} href="/en/login" variant="body2">
           Back to sign in
         </Link>
       </Box>

@@ -1,16 +1,28 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LoginForm } from '../LoginForm'
+import en from '../../../../messages/en.json'
 
 // ── mocks ─────────────────────────────────────────────────────────────────────
 
 const mockPush = jest.fn()
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
+const mockReplace = jest.fn()
+jest.mock('@/i18n/navigation', () => ({
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }))
 
-// Use let + lazy closure: jest.mock() is hoisted above const declarations,
-// so the factory must not access the variable directly — only the closure does.
+// Resolve translation keys against actual en.json so label text matches
+type Messages = Record<string, unknown>
+jest.mock('next-intl', () => ({
+  useTranslations: (namespace: string) => (key: string) => {
+    const parts = [...namespace.split('.'), key]
+    let val: unknown = en
+    for (const p of parts) val = (val as Messages)?.[p]
+    return typeof val === 'string' ? val : key
+  },
+  useLocale: () => 'en',
+}))
+
 let mockLogin: jest.Mock
 jest.mock('@connectrpc/connect', () => ({
   createClient: () => ({ login: (...args: unknown[]) => mockLogin?.(...args) }),
@@ -24,6 +36,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   mockLogin = jest.fn()
   global.fetch = jest.fn().mockResolvedValue({ ok: true })
+  localStorage.clear()
 })
 
 // ── tests ─────────────────────────────────────────────────────────────────────
@@ -71,7 +84,9 @@ describe('LoginForm', () => {
     await userEvent.type(screen.getByLabelText(/email/i), 'user@example.com')
     await userEvent.type(screen.getByLabelText(/password/i), 'secret123')
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/budgets'))
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith('/budgets', expect.objectContaining({ locale: 'en' }))
+    )
   })
 
   it('shows an error message when login fails', async () => {
