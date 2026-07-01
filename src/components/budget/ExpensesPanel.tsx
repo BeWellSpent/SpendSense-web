@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import type { Category, ExpenseAllocation } from '@/gen/spendsense/v1/budget_pb'
@@ -104,6 +105,7 @@ function EditCell({ value, onSave }: EditCellProps) {
 }
 
 export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
+  const t = useTranslations('budget.expenses')
   const { showError } = useSnackbar()
   const client = useClient(BudgetService)
   const [pinnedCategoryIds, setPinnedCategoryIds] = useState<Set<number>>(new Set())
@@ -263,21 +265,21 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
 
   return (
     <Box>
-      <Typography variant="subtitle1" fontWeight={600} mb={1}>Expense Plan</Typography>
+      <Typography variant="subtitle1" fontWeight={600} mb={1}>{t('title')}</Typography>
 
       <TableContainer sx={{ overflowX: 'auto' }}>
       <Table size="small" sx={{ tableLayout: 'auto' }}>
         <TableHead>
           <TableRow>
-            <TableCell rowSpan={2} sx={{ fontWeight: 600, verticalAlign: 'bottom', whiteSpace: 'nowrap' }}>Category</TableCell>
+            <TableCell rowSpan={2} sx={{ fontWeight: 600, verticalAlign: 'bottom', whiteSpace: 'nowrap' }}>{t('category')}</TableCell>
             <TableCell
               colSpan={people.length + 1}
               align="center"
               sx={{ fontWeight: 600, borderBottom: '1px solid', borderColor: 'divider', pb: 0.5 }}
             >
-              Planned Amount
+              {t('plannedAmount')}
             </TableCell>
-            <TableCell rowSpan={2} align="right" sx={{ fontWeight: 600, verticalAlign: 'bottom' }}>Actual</TableCell>
+            <TableCell rowSpan={2} align="right" sx={{ fontWeight: 600, verticalAlign: 'bottom' }}>{t('actual')}</TableCell>
           </TableRow>
           <TableRow>
             {people.map((p) => (
@@ -285,14 +287,14 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                 {p.userName}
               </TableCell>
             ))}
-            <TableCell align="right" sx={{ fontWeight: 600 }}>Total</TableCell>
+            <TableCell align="right" sx={{ fontWeight: 600 }}>{t('total')}</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {visibleCats.length === 0 ? (
             <TableRow>
               <TableCell colSpan={people.length + 3} sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                No categories yet — use the picker below to add one.
+                {t('noCategories')}
               </TableCell>
             </TableRow>
           ) : (
@@ -315,9 +317,9 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                       )}
                       {cat.name}
                       {cat.isSystem && (
-                        <Chip label="global" size="small" variant="outlined" sx={{ fontSize: '0.6rem', height: 16 }} />
+                        <Chip label={t('global')} size="small" variant="outlined" sx={{ fontSize: '0.6rem', height: 16 }} />
                       )}
-                      <Tooltip title="Remove row" placement="right">
+                      <Tooltip title={t('removeRow')} placement="right">
                         <IconButton size="small" onClick={() => handleRemoveCategory(cat.id)} sx={{ ml: 0.5, opacity: 0.4, '&:hover': { opacity: 1 } }}>
                           <DeleteOutlineIcon sx={{ fontSize: 15 }} />
                         </IconButton>
@@ -355,7 +357,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
         {visibleCats.length > 0 && (
           <TableFooter>
             <TableRow sx={{ '& td': footerCellSx }}>
-              <TableCell>Total</TableCell>
+              <TableCell>{t('total')}</TableCell>
               {people.map((p) => {
                 let total = 0
                 for (const cat of visibleCats) {
@@ -394,7 +396,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
             setAutocompleteValue(null)
           }}
           renderInput={(params) => (
-            <TextField {...params} label="Add category to plan…" size="small" />
+            <TextField {...params} label={t('addCategory')} size="small" />
           )}
           sx={{ mt: 1.5, maxWidth: 320 }}
           size="small"
@@ -405,26 +407,26 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
         <Box mt={3}>
           <Divider sx={{ mb: 2 }} />
           <Typography variant="subtitle2" fontWeight={600} color="text.secondary" mb={1}>
-            Committed Savings
+            {t('committedSavings')}
           </Typography>
           <TableContainer sx={{ overflowX: 'auto' }}>
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell rowSpan={2} sx={{ fontWeight: 600, verticalAlign: 'bottom', whiteSpace: 'nowrap' }}>Source</TableCell>
+                <TableCell rowSpan={2} sx={{ fontWeight: 600, verticalAlign: 'bottom', whiteSpace: 'nowrap' }}>{t('source')}</TableCell>
                 <TableCell
                   colSpan={people.length + 1}
                   align="center"
                   sx={{ fontWeight: 600, borderBottom: '1px solid', borderColor: 'divider', pb: 0.5 }}
                 >
-                  Monthly (per person)
+                  {t('monthlyPerPerson')}
                 </TableCell>
               </TableRow>
               <TableRow>
                 {people.map((p) => (
                   <TableCell key={p.id.toString()} align="right" sx={{ fontWeight: 600 }}>{p.userName}</TableCell>
                 ))}
-                <TableCell align="right" sx={{ fontWeight: 600 }}>Total</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>{t('total')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -442,7 +444,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           {s.name}
                           {s.isTaxReserve && (
-                            <Chip label="tax" size="small" color="warning" variant="outlined" sx={{ fontSize: '0.6rem', height: 16 }} />
+                            <Chip label={t('tax')} size="small" color="warning" variant="outlined" sx={{ fontSize: '0.6rem', height: 16 }} />
                           )}
                         </Box>
                       </TableCell>
@@ -459,7 +461,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
             </TableBody>
             <TableFooter>
               <TableRow sx={{ '& td': footerCellSx }}>
-                <TableCell>Total</TableCell>
+                <TableCell>{t('total')}</TableCell>
                 {people.map((p) => {
                   const total = savingsByPerson.get(p.id.toString()) ?? 0
                   return <TableCell key={p.id.toString()} align="right">{total > 0 ? formatMoney(total) : '—'}</TableCell>
@@ -476,12 +478,12 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
         <Box mt={3}>
           <Divider sx={{ mb: 2 }} />
           <Typography variant="subtitle2" fontWeight={600} color="text.secondary" mb={1.5}>
-            Plan Summary
+            {t('planSummary')}
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxWidth: 420 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body2" color="text.secondary">
-                Planned allocations + Fixed expenses
+                {t('plannedAllocations')}
               </Typography>
               <Typography variant="body2" fontWeight={700} sx={{ ml: 2, whiteSpace: 'nowrap' }}>
                 {formatMoney(totalCommitted)}
@@ -489,7 +491,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body2" color="text.secondary">
-                After savings
+                {t('afterSavings')}
               </Typography>
               <Typography variant="body2" fontWeight={700} sx={{ ml: 2, whiteSpace: 'nowrap' }}>
                 {formatMoney(afterSavings)}
@@ -497,7 +499,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body2" color="text.secondary">
-                Remainder
+                {t('remainder')}
               </Typography>
               <Typography
                 variant="body2"

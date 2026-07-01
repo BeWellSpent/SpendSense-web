@@ -53,5 +53,147 @@
     "save": "Save changes",
     "saving": "Saving…",
     "saved": "Profile saved."
+  },
+  "budget": {
+    "list": {
+      "title": "Your Budgets",
+      "newBudget": "New Budget",
+      "createBudget": "Create Budget",
+      "empty": "No budgets yet. Create your first one to get started.",
+      "monthly": "Monthly",
+      "retry": "Retry",
+      "deleteDialog": {
+        "title": "Delete budget?",
+        "body": "{name} and all its people, income sources, and transactions will be permanently deleted. This cannot be undone.",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "deleting": "Deleting…"
+      }
+    },
+    "view": {
+      "failedToLoad": "Failed to load budget.",
+      "noActivePeriod": "No active period found."
+    },
+    "sidebar": {
+      "allBudgets": "All Budgets",
+      "categories": "Categories",
+      "people": "People",
+      "reports": "Reports",
+      "reportsSoon": "Coming soon",
+      "settings": "Settings",
+      "logout": "Logout",
+      "theme": "Theme",
+      "expand": "Expand sidebar",
+      "collapse": "Collapse sidebar"
+    },
+    "income": {
+      "title": "Income",
+      "perMonth": "/ mo",
+      "empty": "No income sources yet."
+    },
+    "savings": {
+      "title": "Savings",
+      "perMonth": "/ mo",
+      "empty": "No savings sources yet.",
+      "taxEstimate": "tax estimate",
+      "taxTooltip": "Auto-calculated monthly set-aside for estimated tax payments. Updated each budget period.",
+      "federal": "Fed:",
+      "state": "State:",
+      "freq": {
+        "oneOff": "one-off",
+        "weekly": "weekly",
+        "biWeekly": "bi-weekly",
+        "monthly": "monthly",
+        "yearly": "yearly"
+      }
+    },
+    "paymentMethods": {
+      "title": "Payment Methods",
+      "empty": "No payment methods yet.",
+      "editTooltip": "Edit",
+      "deactivateTooltip": "Deactivate",
+      "addDialog": {
+        "title": "Add Payment Method",
+        "name": "Name",
+        "namePlaceholder": "e.g. Chase Visa",
+        "type": "Type",
+        "owner": "Owner *",
+        "selectPerson": "Select a person",
+        "colorOptional": "Color (optional)",
+        "cancel": "Cancel",
+        "add": "Add",
+        "adding": "Adding…"
+      },
+      "deactivateDialog": {
+        "title": "Deactivate payment method",
+        "body": "{name} will be deactivated. Transactions in this budget will be reassigned to the selected method. Historical budgets are unaffected.",
+        "reassignTo": "Reassign transactions to",
+        "cancel": "Cancel",
+        "deactivate": "Deactivate",
+        "deactivating": "Deactivating…"
+      },
+      "editDialog": {
+        "title": "Edit payment method",
+        "name": "Name",
+        "namePlaceholder": "e.g. Chase Visa",
+        "colorOptional": "Color (optional)",
+        "cancel": "Cancel",
+        "save": "Save",
+        "saving": "Saving…"
+      },
+      "types": {
+        "cash": "Cash",
+        "credit": "Credit",
+        "debit": "Debit",
+        "digitalWallet": "Digital Wallet",
+        "bankTransfer": "Bank Transfer",
+        "crypto": "Crypto",
+        "investment": "Investment"
+      }
+    },
+    "transactions": {
+      "title": "Transactions",
+      "grandTotal": "{amount} total",
+      "add": "Add",
+      "fixed": "Fixed",
+      "variable": "Variable",
+      "columns": {
+        "item": "Item",
+        "day": "Day",
+        "category": "Category",
+        "paymentMethod": "Payment Method",
+        "owner": "Owner",
+        "amount": "Amount"
+      },
+      "empty": "No {label} transactions yet.",
+      "subtotal": "{label} subtotal"
+    },
+    "expenses": {
+      "title": "Expense Plan",
+      "category": "Category",
+      "plannedAmount": "Planned Amount",
+      "actual": "Actual",
+      "total": "Total",
+      "global": "global",
+      "removeRow": "Remove row",
+      "noCategories": "No categories yet — use the picker below to add one.",
+      "addCategory": "Add category to plan…",
+      "committedSavings": "Committed Savings",
+      "source": "Source",
+      "monthlyPerPerson": "Monthly (per person)",
+      "tax": "tax",
+      "planSummary": "Plan Summary",
+      "plannedAllocations": "Planned allocations + Fixed expenses",
+      "afterSavings": "After savings",
+      "remainder": "Remainder"
+    },
+    "setup": {
+      "steps": {
+        "create": "Create Budget",
+        "addPeople": "Add People",
+        "addIncome": "Add Income",
+        "paymentMethods": "Payment Methods"
+      }
+    }
   }
 }

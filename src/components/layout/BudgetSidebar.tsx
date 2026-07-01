@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useTheme } from '@mui/material/styles'
@@ -45,6 +46,7 @@ interface Props {
 }
 
 export function BudgetSidebar({ budgetId, children }: Props) {
+  const t = useTranslations('budget.sidebar')
   const router = useRouter()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
@@ -81,28 +83,28 @@ export function BudgetSidebar({ budgetId, children }: Props) {
 
   const navItems = [
     {
-      label: 'Categories',
+      label: t('categories'),
       icon: <CategoryIcon />,
       action: () => setCategoriesOpen(true),
       disabled: false,
     },
     {
-      label: 'People',
+      label: t('people'),
       icon: <PeopleIcon />,
       action: () => setPeopleOpen(true),
       disabled: false,
     },
     {
-      label: 'Reports',
+      label: t('reports'),
       icon: <BarChartIcon />,
       action: () => {},
       disabled: true,
-      tooltip: 'Coming soon',
+      tooltip: t('reportsSoon'),
     },
     {
-      label: 'Settings',
+      label: t('settings'),
       icon: <SettingsIcon />,
-      action: () => router.push('/settings'),
+      action: () => router.push({ pathname: '/settings', query: { from: budgetId } }),
       disabled: false,
     },
   ]
@@ -130,7 +132,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
             <Typography variant="h6" fontWeight={700} noWrap>{budgetName}</Typography>
           </Box>
         )}
-        <Tooltip title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} placement="right">
+        <Tooltip title={collapsed ? t('expand') : t('collapse')} placement="right">
           <IconButton onClick={toggleCollapsed} size="small">
             {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
           </IconButton>
@@ -142,7 +144,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
       {/* Back to budgets */}
       <List disablePadding>
         <ListItem disablePadding>
-          <Tooltip title={collapsed ? 'All Budgets' : ''} placement="right">
+          <Tooltip title={collapsed ? t('allBudgets') : ''} placement="right">
             <ListItemButton
               onClick={() => router.push('/budgets')}
               sx={{ justifyContent: collapsed ? 'center' : 'flex-start', px: collapsed ? 0 : 2 }}
@@ -150,7 +152,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
               <ListItemIcon sx={{ minWidth: collapsed ? 0 : 40, justifyContent: 'center' }}>
                 <ArrowBackIcon />
               </ListItemIcon>
-              {!collapsed && <ListItemText primary="All Budgets" />}
+              {!collapsed && <ListItemText primary={t('allBudgets')} />}
             </ListItemButton>
           </Tooltip>
         </ListItem>
@@ -205,7 +207,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
           minHeight: 48,
         }}
       >
-        {!collapsed && <Typography variant="body2" color="text.secondary">Theme</Typography>}
+        {!collapsed && <Typography variant="body2" color="text.secondary">{t('theme')}</Typography>}
         <ThemeToggle />
       </Box>
 
@@ -214,7 +216,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
       {/* Logout */}
       <List disablePadding>
         <ListItem disablePadding>
-          <Tooltip title={collapsed ? 'Logout' : ''} placement="right">
+          <Tooltip title={collapsed ? t('logout') : ''} placement="right">
             <ListItemButton
               onClick={handleLogout}
               sx={{ justifyContent: collapsed ? 'center' : 'flex-start', px: collapsed ? 0 : 2 }}
@@ -222,7 +224,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
               <ListItemIcon sx={{ minWidth: collapsed ? 0 : 40, justifyContent: 'center' }}>
                 <LogoutIcon />
               </ListItemIcon>
-              {!collapsed && <ListItemText primary="Logout" />}
+              {!collapsed && <ListItemText primary={t('logout')} />}
             </ListItemButton>
           </Tooltip>
         </ListItem>
@@ -312,7 +314,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
             ))}
             <IconButton onClick={handleLogout} size="small" sx={{ flexDirection: 'column', borderRadius: 2, px: 2 }}>
               <LogoutIcon />
-              <Typography variant="caption" display="block" sx={{ mt: 0.25 }}>Logout</Typography>
+              <Typography variant="caption" display="block" sx={{ mt: 0.25 }}>{t('logout')}</Typography>
             </IconButton>
           </Paper>
         )}

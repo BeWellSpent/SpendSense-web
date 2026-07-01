@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import { UserService } from '@/gen/spendsense/v1/user_connect'
@@ -25,8 +26,6 @@ import { AddPeopleModal } from './modals/AddPeopleModal'
 import { AddIncomeModal } from './modals/AddIncomeModal'
 import { AddPaymentMethodsStep } from './modals/AddPaymentMethodsStep'
 
-const STEPS = ['Create Budget', 'Add People', 'Add Income', 'Payment Methods']
-
 interface Props {
   open: boolean
   onClose: () => void
@@ -34,6 +33,7 @@ interface Props {
 }
 
 export function BudgetSetupFlow({ open, onClose, onComplete }: Props) {
+  const t = useTranslations('budget.setup')
   const { showError, showSuccess } = useSnackbar()
   const [step, setStep] = useState(0)
   const [profileId, setProfileId] = useState<string | null>(null)
@@ -81,7 +81,8 @@ export function BudgetSetupFlow({ open, onClose, onComplete }: Props) {
   }
 
   function handleSkipOrNext() {
-    if (step < STEPS.length - 1) {
+    const steps = [t('steps.create'), t('steps.addPeople'), t('steps.addIncome'), t('steps.paymentMethods')]
+    if (step < steps.length - 1) {
       setStep((s) => s + 1)
     } else {
       showSuccess('Budget set up successfully!')
@@ -103,7 +104,7 @@ export function BudgetSetupFlow({ open, onClose, onComplete }: Props) {
 
       <DialogContent>
         <Stepper activeStep={step} sx={{ mb: 3 }}>
-          {STEPS.map((label) => (
+          {[t('steps.create'), t('steps.addPeople'), t('steps.addIncome'), t('steps.paymentMethods')].map((label) => (
             <Step key={label}><StepLabel>{label}</StepLabel></Step>
           ))}
         </Stepper>

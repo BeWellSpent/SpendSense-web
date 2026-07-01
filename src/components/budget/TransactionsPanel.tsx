@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import type { Transaction, Category, PaymentMethod, BudgetPerson } from '@/gen/spendsense/v1/budget_pb'
@@ -172,6 +173,7 @@ function TransactionTable({
   onDeleted,
   onEdit,
 }: TableProps) {
+  const t = useTranslations('budget.transactions')
   const { showError } = useSnackbar()
   const client = useClient(BudgetService)
   const [sortKey, setSortKey] = useState<SortKey>('day')
@@ -214,18 +216,18 @@ function TransactionTable({
       <Table size="small" sx={{ minWidth: 560 }}>
         <TableHead>
           <TableRow>
-            <SortHeader col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>Item</SortHeader>
-            <SortHeader col="day" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>Day</SortHeader>
-            <SortHeader col="category" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>Category</SortHeader>
-            <SortHeader col="method" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>Payment Method</SortHeader>
-            <SortHeader col="owner" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>Owner</SortHeader>
+            <SortHeader col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>{t('columns.item')}</SortHeader>
+            <SortHeader col="day" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>{t('columns.day')}</SortHeader>
+            <SortHeader col="category" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>{t('columns.category')}</SortHeader>
+            <SortHeader col="method" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>{t('columns.paymentMethod')}</SortHeader>
+            <SortHeader col="owner" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>{t('columns.owner')}</SortHeader>
             <TableCell align="right" sortDirection={sortKey === 'amount' ? sortDir : false}>
               <TableSortLabel
                 active={sortKey === 'amount'}
                 direction={sortKey === 'amount' ? sortDir : 'asc'}
                 onClick={() => handleSort('amount')}
               >
-                Amount
+                {t('columns.amount')}
               </TableSortLabel>
             </TableCell>
             {isEditable && <TableCell />}
@@ -235,7 +237,7 @@ function TransactionTable({
           {sorted.length === 0 ? (
             <TableRow>
               <TableCell colSpan={colSpan} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                No {label.toLowerCase()} transactions yet.
+                {t('empty', { label })}
               </TableCell>
             </TableRow>
           ) : (
@@ -295,7 +297,7 @@ function TransactionTable({
                 align="right"
                 sx={{ fontWeight: 700, color: 'text.primary', borderTop: 2, borderColor: 'divider' }}
               >
-                {label} subtotal
+                {t('subtotal', { label })}
               </TableCell>
               <TableCell
                 align="right"
@@ -313,6 +315,7 @@ function TransactionTable({
 }
 
 export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable = true }: Props) {
+  const t = useTranslations('budget.transactions')
   const queryClient = useQueryClient()
   const client = useClient(BudgetService)
   const [viewMode, setViewMode] = useViewPreference('tabbed')
@@ -359,10 +362,10 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-          <Typography variant="subtitle1" fontWeight={600}>Transactions</Typography>
+          <Typography variant="subtitle1" fontWeight={600}>{t('title')}</Typography>
           {grandTotal > 0 && (
             <Typography variant="subtitle2" color="text.secondary">
-              {formatMoney(grandTotal)} total
+              {t('grandTotal', { amount: formatMoney(grandTotal) })}
             </Typography>
           )}
         </Box>
@@ -378,7 +381,7 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
           </ToggleButtonGroup>
           {isEditable && (
             <Button size="small" startIcon={<AddIcon />} variant="outlined" onClick={() => setAddOpen(true)}>
-              Add
+              {t('add')}
             </Button>
           )}
         </Box>
@@ -387,23 +390,23 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
       {viewMode === 'tabbed' ? (
         <>
           <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 1 }}>
-            <Tab label={fixedTxs.length ? `Fixed · ${formatMoney(fixedTotal)}` : 'Fixed'} />
-            <Tab label={variableTxs.length ? `Variable · ${formatMoney(variableTotal)}` : 'Variable'} />
+            <Tab label={fixedTxs.length ? `${t('fixed')} · ${formatMoney(fixedTotal)}` : t('fixed')} />
+            <Tab label={variableTxs.length ? `${t('variable')} · ${formatMoney(variableTotal)}` : t('variable')} />
           </Tabs>
           {tabIndex === 0
-            ? <TransactionTable {...sharedTableProps} transactions={fixedTxs} isLoading={fixedLoading} label="Fixed" />
-            : <TransactionTable {...sharedTableProps} transactions={variableTxs} isLoading={variableLoading} label="Variable" />
+            ? <TransactionTable {...sharedTableProps} transactions={fixedTxs} isLoading={fixedLoading} label={t('fixed')} />
+            : <TransactionTable {...sharedTableProps} transactions={variableTxs} isLoading={variableLoading} label={t('variable')} />
           }
         </>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
           <Box>
-            <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>FIXED</Typography>
-            <TransactionTable {...sharedTableProps} transactions={fixedTxs} isLoading={fixedLoading} label="Fixed" />
+            <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>{t('fixed').toUpperCase()}</Typography>
+            <TransactionTable {...sharedTableProps} transactions={fixedTxs} isLoading={fixedLoading} label={t('fixed')} />
           </Box>
           <Box>
-            <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>VARIABLE</Typography>
-            <TransactionTable {...sharedTableProps} transactions={variableTxs} isLoading={variableLoading} label="Variable" />
+            <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>{t('variable').toUpperCase()}</Typography>
+            <TransactionTable {...sharedTableProps} transactions={variableTxs} isLoading={variableLoading} label={t('variable')} />
           </Box>
         </Box>
       )}

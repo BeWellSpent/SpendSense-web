@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { UserService } from '@/gen/spendsense/v1/user_connect'
 import { FilingStatus, TaxPaymentFrequency } from '@/gen/spendsense/v1/common_pb'
@@ -71,6 +72,8 @@ const CURRENCY_OPTIONS = [
 export function ProfileSettings() {
   const t = useTranslations('settings')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromBudgetId = searchParams.get('from')
   const client = useClient(UserService)
   const { showError } = useSnackbar()
   const [saved, setSaved] = useState(false)
@@ -131,7 +134,10 @@ export function ProfileSettings() {
       setTimeout(() => setSaved(false), 3000)
       // If language changed, navigate to the new locale's settings page
       if (language !== user?.language) {
-        router.replace('/settings', { locale: language })
+        router.replace(
+          fromBudgetId ? { pathname: '/settings', query: { from: fromBudgetId } } : '/settings',
+          { locale: language }
+        )
       }
     } catch (err) {
       showError(err)
@@ -145,7 +151,7 @@ export function ProfileSettings() {
   return (
     <Box sx={{ maxWidth: 480 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <IconButton onClick={() => router.push('/budgets')} size="small">
+        <IconButton onClick={() => router.push(fromBudgetId ? `/budgets/${fromBudgetId}` : '/budgets')} size="small">
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h6" fontWeight={700}>{t('title')}</Typography>

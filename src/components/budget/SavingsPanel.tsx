@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import type { SavingsSource } from '@/gen/spendsense/v1/budget_pb'
@@ -33,11 +34,11 @@ function formatMoney(units: bigint, nanos: number): string {
   return total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
-const FREQ_LABEL: Record<RecurringType, string> = {
+const FREQ_KEY: Record<RecurringType, string> = {
   [RecurringType.UNSPECIFIED]: '',
-  [RecurringType.ONE_OFF]: 'one-off',
+  [RecurringType.ONE_OFF]: 'oneOff',
   [RecurringType.WEEKLY]: 'weekly',
-  [RecurringType.BI_WEEKLY]: 'bi-weekly',
+  [RecurringType.BI_WEEKLY]: 'biWeekly',
   [RecurringType.MONTHLY]: 'monthly',
   [RecurringType.YEARLY]: 'yearly',
 }
@@ -57,6 +58,7 @@ function toMonthlyAmount(src: SavingsSource): number {
 }
 
 export function SavingsPanel({ budgetProfileId }: Props) {
+  const t = useTranslations('budget.savings')
   const { showError } = useSnackbar()
   const client = useClient(BudgetService)
   const [editingSource, setEditingSource] = useState<SavingsSource | null>(null)
@@ -97,31 +99,30 @@ export function SavingsPanel({ budgetProfileId }: Props) {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Typography variant="subtitle1" fontWeight={600}>Savings</Typography>
+          <Typography variant="subtitle1" fontWeight={600}>{t('title')}</Typography>
           <IconButton size="small" onClick={() => setAddOpen(true)}>
             <AddIcon fontSize="small" />
           </IconButton>
         </Box>
         <Typography variant="subtitle2" color="info.main">
-          {monthlyTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} / mo
+          {monthlyTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} {t('perMonth')}
         </Typography>
       </Box>
       {sources.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">No savings sources yet.</Typography>
+        <Typography variant="body2" color="text.secondary">{t('empty')}</Typography>
       ) : (
         <List dense disablePadding>
           {sources.map((src) => {
             const personName = src.budgetPersonId !== 0n
               ? personMap.get(src.budgetPersonId.toString())
               : undefined
-            const freqLabel = FREQ_LABEL[src.frequency]
             return (
               <ListItem
                 key={src.id.toString()}
                 disableGutters
                 secondaryAction={
                   src.isTaxReserve ? (
-                    <Tooltip title="Auto-calculated monthly set-aside for estimated tax payments. Updated each budget period." placement="left">
+                    <Tooltip title={t('taxTooltip')} placement="left">
                       <InfoOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mt: 0.5 }} />
                     </Tooltip>
                   ) : (
@@ -141,10 +142,10 @@ export function SavingsPanel({ budgetProfileId }: Props) {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
                       {src.name}
                       {src.isTaxReserve && (
-                        <Chip label="tax estimate" size="small" color="warning" variant="outlined" sx={{ fontSize: '0.65rem', height: 18 }} />
+                        <Chip label={t('taxEstimate')} size="small" color="warning" variant="outlined" sx={{ fontSize: '0.65rem', height: 18 }} />
                       )}
-                      {!src.isTaxReserve && freqLabel && (
-                        <Chip label={freqLabel} size="small" variant="outlined" sx={{ fontSize: '0.65rem', height: 18 }} />
+                      {!src.isTaxReserve && FREQ_KEY[src.frequency] && (
+                        <Chip label={t(`freq.${FREQ_KEY[src.frequency]}`)} size="small" variant="outlined" sx={{ fontSize: '0.65rem', height: 18 }} />
                       )}
                     </Box>
                   }
@@ -152,10 +153,10 @@ export function SavingsPanel({ budgetProfileId }: Props) {
                     <>
                       {formatMoney(src.amount?.units ?? 0n, src.amount?.nanos ?? 0)}
                       {src.isTaxReserve && src.federalAmount && src.stateAmount && (
-                        <> · Fed: {formatMoney(src.federalAmount.units, src.federalAmount.nanos)} · State: {formatMoney(src.stateAmount.units, src.stateAmount.nanos)}</>
+                        <> · {t('federal')} {formatMoney(src.federalAmount.units, src.federalAmount.nanos)} · {t('state')} {formatMoney(src.stateAmount.units, src.stateAmount.nanos)}</>
                       )}
                       {src.isTaxReserve && src.federalAmount && !src.stateAmount && (
-                        <> · Fed: {formatMoney(src.federalAmount.units, src.federalAmount.nanos)}</>
+                        <> · {t('federal')} {formatMoney(src.federalAmount.units, src.federalAmount.nanos)}</>
                       )}
                       {personName && <> · {personName}</>}
                     </>

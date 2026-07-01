@@ -53,5 +53,147 @@
     "save": "Guardar cambios",
     "saving": "Guardando…",
     "saved": "Perfil guardado."
+  },
+  "budget": {
+    "list": {
+      "title": "Tus Presupuestos",
+      "newBudget": "Nuevo Presupuesto",
+      "createBudget": "Crear Presupuesto",
+      "empty": "No tienes presupuestos aún. Crea el primero para comenzar.",
+      "monthly": "Mensual",
+      "retry": "Reintentar",
+      "deleteDialog": {
+        "title": "¿Eliminar presupuesto?",
+        "body": "{name} y todas sus personas, fuentes de ingresos y transacciones serán eliminados permanentemente. Esta acción no se puede deshacer.",
+        "cancel": "Cancelar",
+        "delete": "Eliminar",
+        "deleting": "Eliminando…"
+      }
+    },
+    "view": {
+      "failedToLoad": "No se pudo cargar el presupuesto.",
+      "noActivePeriod": "No se encontró un período activo."
+    },
+    "sidebar": {
+      "allBudgets": "Todos los Presupuestos",
+      "categories": "Categorías",
+      "people": "Personas",
+      "reports": "Reportes",
+      "reportsSoon": "Próximamente",
+      "settings": "Configuración",
+      "logout": "Cerrar sesión",
+      "theme": "Tema",
+      "expand": "Expandir barra lateral",
+      "collapse": "Contraer barra lateral"
+    },
+    "income": {
+      "title": "Ingresos",
+      "perMonth": "/ mes",
+      "empty": "No hay fuentes de ingresos aún."
+    },
+    "savings": {
+      "title": "Ahorros",
+      "perMonth": "/ mes",
+      "empty": "No hay fuentes de ahorro aún.",
+      "taxEstimate": "estimación fiscal",
+      "taxTooltip": "Reserva mensual calculada automáticamente para pagos de impuestos estimados. Se actualiza en cada período.",
+      "federal": "Fed:",
+      "state": "Est:",
+      "freq": {
+        "oneOff": "único",
+        "weekly": "semanal",
+        "biWeekly": "quincenal",
+        "monthly": "mensual",
+        "yearly": "anual"
+      }
+    },
+    "paymentMethods": {
+      "title": "Métodos de Pago",
+      "empty": "No hay métodos de pago aún.",
+      "editTooltip": "Editar",
+      "deactivateTooltip": "Desactivar",
+      "addDialog": {
+        "title": "Agregar Método de Pago",
+        "name": "Nombre",
+        "namePlaceholder": "ej. Visa Chase",
+        "type": "Tipo",
+        "owner": "Titular *",
+        "selectPerson": "Seleccionar persona",
+        "colorOptional": "Color (opcional)",
+        "cancel": "Cancelar",
+        "add": "Agregar",
+        "adding": "Agregando…"
+      },
+      "deactivateDialog": {
+        "title": "Desactivar método de pago",
+        "body": "{name} será desactivado. Las transacciones en este presupuesto serán reasignadas al método seleccionado. Los presupuestos históricos no se ven afectados.",
+        "reassignTo": "Reasignar transacciones a",
+        "cancel": "Cancelar",
+        "deactivate": "Desactivar",
+        "deactivating": "Desactivando…"
+      },
+      "editDialog": {
+        "title": "Editar método de pago",
+        "name": "Nombre",
+        "namePlaceholder": "ej. Visa Chase",
+        "colorOptional": "Color (opcional)",
+        "cancel": "Cancelar",
+        "save": "Guardar",
+        "saving": "Guardando…"
+      },
+      "types": {
+        "cash": "Efectivo",
+        "credit": "Crédito",
+        "debit": "Débito",
+        "digitalWallet": "Billetera Digital",
+        "bankTransfer": "Transferencia Bancaria",
+        "crypto": "Cripto",
+        "investment": "Inversión"
+      }
+    },
+    "transactions": {
+      "title": "Transacciones",
+      "grandTotal": "{amount} en total",
+      "add": "Agregar",
+      "fixed": "Fijos",
+      "variable": "Variables",
+      "columns": {
+        "item": "Concepto",
+        "day": "Día",
+        "category": "Categoría",
+        "paymentMethod": "Método de Pago",
+        "owner": "Titular",
+        "amount": "Monto"
+      },
+      "empty": "No hay transacciones {label} aún.",
+      "subtotal": "Subtotal {label}"
+    },
+    "expenses": {
+      "title": "Plan de Gastos",
+      "category": "Categoría",
+      "plannedAmount": "Monto Planificado",
+      "actual": "Real",
+      "total": "Total",
+      "global": "global",
+      "removeRow": "Quitar fila",
+      "noCategories": "No hay categorías aún — usa el selector de abajo para agregar una.",
+      "addCategory": "Agregar categoría al plan…",
+      "committedSavings": "Ahorros Comprometidos",
+      "source": "Fuente",
+      "monthlyPerPerson": "Mensual (por persona)",
+      "tax": "impuesto",
+      "planSummary": "Resumen del Plan",
+      "plannedAllocations": "Asignaciones planificadas + Gastos fijos",
+      "afterSavings": "Después de ahorros",
+      "remainder": "Saldo restante"
+    },
+    "setup": {
+      "steps": {
+        "create": "Crear Presupuesto",
+        "addPeople": "Agregar Personas",
+        "addIncome": "Agregar Ingresos",
+        "paymentMethods": "Métodos de Pago"
+      }
+    }
   }
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import { UserService } from '@/gen/spendsense/v1/user_connect'
 import { useClient } from '@/hooks/useClient'
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function BudgetView({ budgetId }: Props) {
+  const t = useTranslations('budget.view')
   const client = useClient(BudgetService)
   const userClient = useClient(UserService)
 
@@ -41,7 +43,7 @@ export function BudgetView({ budgetId }: Props) {
   if (profileLoading || periodsLoading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}><CircularProgress /></Box>
   }
-  if (profileError) return <Typography color="error">Failed to load budget.</Typography>
+  if (profileError) return <Typography color="error">{t('failedToLoad')}</Typography>
 
   const profile = profileData?.profile
   const periods = periodsData?.periods ?? []
@@ -80,7 +82,7 @@ export function BudgetView({ budgetId }: Props) {
         {activePeriod ? (
           <TransactionsPanel budgetPeriodId={activePeriod.id} budgetProfileId={budgetId} />
         ) : (
-          <Typography variant="body2" color="text.secondary">No active period found.</Typography>
+          <Typography variant="body2" color="text.secondary">{t('noActivePeriod')}</Typography>
         )}
       </Box>
 

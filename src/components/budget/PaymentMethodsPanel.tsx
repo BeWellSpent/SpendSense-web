@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import { PaymentType } from '@/gen/spendsense/v1/common_pb'
@@ -34,14 +35,14 @@ import CircularProgress from '@mui/material/CircularProgress'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 
-const PAYMENT_TYPES = [
-  { value: PaymentType.CASH, label: 'Cash' },
-  { value: PaymentType.CREDIT, label: 'Credit' },
-  { value: PaymentType.DEBIT, label: 'Debit' },
-  { value: PaymentType.DIGITAL_WALLET, label: 'Digital Wallet' },
-  { value: PaymentType.BANK_TRANSFER, label: 'Bank Transfer' },
-  { value: PaymentType.CRYPTO, label: 'Crypto' },
-  { value: PaymentType.INVESTMENT, label: 'Investment' },
+const PAYMENT_TYPE_KEYS: { value: PaymentType; key: string }[] = [
+  { value: PaymentType.CASH, key: 'cash' },
+  { value: PaymentType.CREDIT, key: 'credit' },
+  { value: PaymentType.DEBIT, key: 'debit' },
+  { value: PaymentType.DIGITAL_WALLET, key: 'digitalWallet' },
+  { value: PaymentType.BANK_TRANSFER, key: 'bankTransfer' },
+  { value: PaymentType.CRYPTO, key: 'crypto' },
+  { value: PaymentType.INVESTMENT, key: 'investment' },
 ]
 
 interface Props {
@@ -50,6 +51,7 @@ interface Props {
 }
 
 export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId }: Props) {
+  const t = useTranslations('budget.paymentMethods')
   const { showError, showSuccess } = useSnackbar()
   const theme = useTheme()
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
@@ -175,14 +177,14 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId }: Props) 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="subtitle1" fontWeight={600}>Payment Methods</Typography>
+        <Typography variant="subtitle1" fontWeight={600}>{t('title')}</Typography>
         <IconButton size="small" onClick={() => setAddOpen(true)}>
           <AddIcon fontSize="small" />
         </IconButton>
       </Box>
 
       {methods.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">No payment methods yet.</Typography>
+        <Typography variant="body2" color="text.secondary">{t('empty')}</Typography>
       ) : (
         <List dense disablePadding>
           {methods.map((m) => {
@@ -195,12 +197,12 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId }: Props) 
                 disableGutters
                 secondaryAction={
                   <Box>
-                    <Tooltip title="Edit">
+                    <Tooltip title={t('editTooltip')}>
                       <IconButton size="small" onClick={() => openEdit(m)}>
                         <EditIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Deactivate">
+                    <Tooltip title={t('deactivateTooltip')}>
                       <span>
                         <IconButton
                           size="small"
@@ -238,36 +240,36 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId }: Props) 
         fullWidth
         fullScreen={fullScreen}
       >
-        <DialogTitle>Add Payment Method</DialogTitle>
+        <DialogTitle>{t('addDialog.title')}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField
-              label="Name"
+              label={t('addDialog.name')}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               fullWidth
-              placeholder="e.g. Chase Visa"
+              placeholder={t('addDialog.namePlaceholder')}
             />
             <TextField
               select
-              label="Type"
+              label={t('addDialog.type')}
               value={newType}
               onChange={(e) => setNewType(Number(e.target.value) as PaymentType)}
               fullWidth
             >
-              {PAYMENT_TYPES.map((t) => (
-                <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+              {PAYMENT_TYPE_KEYS.map((pt) => (
+                <MenuItem key={pt.value} value={pt.value}>{t(`types.${pt.key}`)}</MenuItem>
               ))}
             </TextField>
             <FormControl fullWidth size="small" required>
-              <InputLabel>Owner *</InputLabel>
+              <InputLabel>{t('addDialog.owner')}</InputLabel>
               <Select
-                label="Owner *"
+                label={t('addDialog.owner')}
                 value={newPersonId.toString()}
                 onChange={(e) => setNewPersonId(BigInt(e.target.value))}
                 displayEmpty
               >
-                <MenuItem value="0" disabled><em>Select a person</em></MenuItem>
+                <MenuItem value="0" disabled><em>{t('addDialog.selectPerson')}</em></MenuItem>
                 {people.map((p) => (
                   <MenuItem key={p.id.toString()} value={p.id.toString()}>
                     {p.userName}
@@ -277,16 +279,16 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId }: Props) 
             </FormControl>
             <Box>
               <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                Color (optional)
+                {t('addDialog.colorOptional')}
               </Typography>
               <ColorPicker value={newColor} onChange={setNewColor} />
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setAddOpen(false); setNewName(''); setNewPersonId(0n); setNewColor('') }} color="inherit">Cancel</Button>
+          <Button onClick={() => { setAddOpen(false); setNewName(''); setNewPersonId(0n); setNewColor('') }} color="inherit">{t('addDialog.cancel')}</Button>
           <Button variant="contained" onClick={handleCreate} disabled={!newName.trim() || newPersonId === 0n || isCreating}>
-            {isCreating ? 'Adding…' : 'Add'}
+            {isCreating ? t('addDialog.adding') : t('addDialog.add')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -299,15 +301,15 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId }: Props) 
         fullWidth
         fullScreen={fullScreen}
       >
-        <DialogTitle>Deactivate payment method</DialogTitle>
+        <DialogTitle>{t('deactivateDialog.title')}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              <strong>{deletingMethod?.name}</strong> will be deactivated. Transactions in this budget will be reassigned to the selected method. Historical budgets are unaffected.
+              {t('deactivateDialog.body', { name: deletingMethod?.name ?? '' })}
             </Typography>
             <TextField
               select
-              label="Reassign transactions to"
+              label={t('deactivateDialog.reassignTo')}
               value={replacementId}
               onChange={(e) => setReplacementId(e.target.value)}
               fullWidth
@@ -326,14 +328,14 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId }: Props) 
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeletingMethod(null)} color="inherit">Cancel</Button>
+          <Button onClick={() => setDeletingMethod(null)} color="inherit">{t('deactivateDialog.cancel')}</Button>
           <Button
             variant="contained"
             color="error"
             onClick={handleDelete}
             disabled={!replacementId || isDeleting}
           >
-            {isDeleting ? 'Deactivating…' : 'Deactivate'}
+            {isDeleting ? t('deactivateDialog.deactivating') : t('deactivateDialog.deactivate')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -346,32 +348,32 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId }: Props) 
         fullWidth
         fullScreen={fullScreen}
       >
-        <DialogTitle>Edit payment method</DialogTitle>
+        <DialogTitle>{t('editDialog.title')}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField
-              label="Name"
+              label={t('editDialog.name')}
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               fullWidth
-              placeholder="e.g. Chase Visa"
+              placeholder={t('editDialog.namePlaceholder')}
             />
             <Box>
               <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                Color (optional)
+                {t('editDialog.colorOptional')}
               </Typography>
               <ColorPicker value={editColor} onChange={setEditColor} />
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditingMethod(null)} color="inherit">Cancel</Button>
+          <Button onClick={() => setEditingMethod(null)} color="inherit">{t('editDialog.cancel')}</Button>
           <Button
             variant="contained"
             onClick={handleUpdate}
             disabled={!editName.trim() || isUpdating}
           >
-            {isUpdating ? 'Saving…' : 'Save'}
+            {isUpdating ? t('editDialog.saving') : t('editDialog.save')}
           </Button>
         </DialogActions>
       </Dialog>

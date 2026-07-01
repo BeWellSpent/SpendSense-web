@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import type { IncomeSource } from '@/gen/spendsense/v1/budget_pb'
@@ -31,6 +32,7 @@ function formatMoney(units: bigint, nanos: number): string {
 }
 
 export function IncomePanel({ budgetProfileId, showBeforeTax }: Props) {
+  const t = useTranslations('budget.income')
   const { showError } = useSnackbar()
   const client = useClient(BudgetService)
   const queryClient = useQueryClient()
@@ -80,17 +82,17 @@ export function IncomePanel({ budgetProfileId, showBeforeTax }: Props) {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Typography variant="subtitle1" fontWeight={600}>Income</Typography>
+          <Typography variant="subtitle1" fontWeight={600}>{t('title')}</Typography>
           <IconButton size="small" onClick={() => setAddOpen(true)}>
             <AddIcon fontSize="small" />
           </IconButton>
         </Box>
         <Typography variant="subtitle2" color="success.main">
-          {total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} / mo
+          {total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} {t('perMonth')}
         </Typography>
       </Box>
       {sources.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">No income sources yet.</Typography>
+        <Typography variant="body2" color="text.secondary">{t('empty')}</Typography>
       ) : (
         <List dense disablePadding>
           {sources.map((src) => {
