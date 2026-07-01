@@ -131,7 +131,7 @@ export function ProfileSettings() {
       setTimeout(() => setSaved(false), 3000)
       // If language changed, navigate to the new locale's settings page
       if (language !== user?.language) {
-        router.push('/settings', { locale: language })
+        router.replace('/settings', { locale: language })
       }
     } catch (err) {
       showError(err)
@@ -145,7 +145,7 @@ export function ProfileSettings() {
   return (
     <Box sx={{ maxWidth: 480 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <IconButton onClick={() => router.back()} size="small">
+        <IconButton onClick={() => router.push('/budgets')} size="small">
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h6" fontWeight={700}>{t('title')}</Typography>
