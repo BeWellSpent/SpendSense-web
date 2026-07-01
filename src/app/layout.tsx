@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { getLocale } from 'next-intl/server'
+import { Analytics } from '@vercel/analytics/next'
 import { ThemeRegistry } from '@/components/ui/ThemeRegistry'
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <ThemeRegistry>{children}</ThemeRegistry>
+        <Analytics />
       </body>
     </html>
   )
