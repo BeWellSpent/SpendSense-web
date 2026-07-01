@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import type { BudgetProfile } from '@/gen/spendsense/v1/budget_pb'
@@ -38,18 +39,19 @@ function DeleteConfirmDialog({
   onConfirm: () => void
   isDeleting: boolean
 }) {
+  const t = useTranslations('budget.list.deleteDialog')
   return (
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Delete budget?</DialogTitle>
+      <DialogTitle>{t('title')}</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          <strong>{budget.name}</strong> and all its people, income sources, and transactions will be permanently deleted. This cannot be undone.
+          {t('body', { name: budget.name })}
         </DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} color="inherit" disabled={isDeleting}>Cancel</Button>
+        <Button onClick={onClose} color="inherit" disabled={isDeleting}>{t('cancel')}</Button>
         <Button onClick={onConfirm} color="error" variant="contained" disabled={isDeleting}>
-          {isDeleting ? 'Deleting…' : 'Delete'}
+          {isDeleting ? t('deleting') : t('delete')}
         </Button>
       </DialogActions>
     </Dialog>
@@ -57,6 +59,7 @@ function DeleteConfirmDialog({
 }
 
 export function BudgetList() {
+  const t = useTranslations('budget.list')
   const router = useRouter()
   const { showError, showSuccess } = useSnackbar()
   const [setupOpen, setSetupOpen] = useState(false)
@@ -96,7 +99,7 @@ export function BudgetList() {
     return (
       <Box sx={{ textAlign: 'center', py: 8 }}>
         <Typography color="error" mb={2}>{message}</Typography>
-        <Button variant="outlined" onClick={() => refetch()}>Retry</Button>
+        <Button variant="outlined" onClick={() => refetch()}>{t('retry')}</Button>
       </Box>
     )
   }
@@ -106,16 +109,16 @@ export function BudgetList() {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" fontWeight={700}>Your Budgets</Typography>
+        <Typography variant="h5" fontWeight={700}>{t('title')}</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setSetupOpen(true)}>
-          New Budget
+          {t('newBudget')}
         </Button>
       </Box>
 
       {profiles.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
-          <Typography variant="body1" mb={2}>No budgets yet. Create your first one to get started.</Typography>
-          <Button variant="outlined" onClick={() => setSetupOpen(true)}>Create Budget</Button>
+          <Typography variant="body1" mb={2}>{t('empty')}</Typography>
+          <Button variant="outlined" onClick={() => setSetupOpen(true)}>{t('createBudget')}</Button>
         </Box>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 2 }}>
@@ -127,7 +130,7 @@ export function BudgetList() {
               }}>
                 <CardContent>
                   <Typography variant="h6">{profile.name}</Typography>
-                  <Typography variant="body2" color="text.secondary">Monthly</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('monthly')}</Typography>
                 </CardContent>
               </CardActionArea>
               <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
