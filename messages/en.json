@@ -187,6 +187,12 @@
       "afterSavings": "After savings",
       "remainder": "Remainder"
     },
+    "fab": {
+      "label": "Add",
+      "addTransaction": "Add Transaction",
+      "addSavings": "Add Savings",
+      "addIncome": "Add Income"
+    },
     "setup": {
       "steps": {
         "create": "Create Budget",

@@ -19,11 +19,12 @@ import IconButton from '@mui/material/IconButton'
 import CircularProgress from '@mui/material/CircularProgress'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
-import AddIcon from '@mui/icons-material/Add'
 
 interface Props {
   budgetProfileId: string
   showBeforeTax?: boolean
+  addOpen?: boolean
+  onAddClose?: () => void
 }
 
 function formatMoney(units: bigint, nanos: number): string {
@@ -31,13 +32,12 @@ function formatMoney(units: bigint, nanos: number): string {
   return total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
-export function IncomePanel({ budgetProfileId, showBeforeTax }: Props) {
+export function IncomePanel({ budgetProfileId, showBeforeTax, addOpen = false, onAddClose }: Props) {
   const t = useTranslations('budget.income')
   const { showError } = useSnackbar()
   const client = useClient(BudgetService)
   const queryClient = useQueryClient()
   const [editingSource, setEditingSource] = useState<IncomeSource | null>(null)
-  const [addOpen, setAddOpen] = useState(false)
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['income-sources', budgetProfileId],
@@ -83,9 +83,6 @@ export function IncomePanel({ budgetProfileId, showBeforeTax }: Props) {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Typography variant="subtitle1" fontWeight={600}>{t('title')}</Typography>
-          <IconButton size="small" onClick={() => setAddOpen(true)}>
-            <AddIcon fontSize="small" />
-          </IconButton>
         </Box>
         <Typography variant="subtitle2" color="success.main">
           {total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} {t('perMonth')}
@@ -133,8 +130,8 @@ export function IncomePanel({ budgetProfileId, showBeforeTax }: Props) {
         <AddIncomeDialog
           budgetProfileId={budgetProfileId}
           showBeforeTax={showBeforeTax}
-          onClose={() => setAddOpen(false)}
-          onDone={() => { setAddOpen(false); refetch(); invalidateSavings() }}
+          onClose={() => onAddClose?.()}
+          onDone={() => { onAddClose?.(); refetch(); invalidateSavings() }}
         />
       )}
 

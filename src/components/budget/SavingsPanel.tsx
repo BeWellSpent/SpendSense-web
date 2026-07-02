@@ -21,12 +21,13 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
-import AddIcon from '@mui/icons-material/Add'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import Tooltip from '@mui/material/Tooltip'
 
 interface Props {
   budgetProfileId: string
+  addOpen?: boolean
+  onAddClose?: () => void
 }
 
 function formatMoney(units: bigint, nanos: number): string {
@@ -57,12 +58,11 @@ function toMonthlyAmount(src: SavingsSource): number {
   return amount * (MONTHLY_MULTIPLIER[src.frequency] ?? 0)
 }
 
-export function SavingsPanel({ budgetProfileId }: Props) {
+export function SavingsPanel({ budgetProfileId, addOpen = false, onAddClose }: Props) {
   const t = useTranslations('budget.savings')
   const { showError } = useSnackbar()
   const client = useClient(BudgetService)
   const [editingSource, setEditingSource] = useState<SavingsSource | null>(null)
-  const [addOpen, setAddOpen] = useState(false)
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['savings-sources', budgetProfileId],
@@ -100,9 +100,6 @@ export function SavingsPanel({ budgetProfileId }: Props) {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Typography variant="subtitle1" fontWeight={600}>{t('title')}</Typography>
-          <IconButton size="small" onClick={() => setAddOpen(true)}>
-            <AddIcon fontSize="small" />
-          </IconButton>
         </Box>
         <Typography variant="subtitle2" color="info.main">
           {monthlyTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} {t('perMonth')}
@@ -171,8 +168,8 @@ export function SavingsPanel({ budgetProfileId }: Props) {
       {addOpen && (
         <AddSavingsDialog
           budgetProfileId={budgetProfileId}
-          onClose={() => setAddOpen(false)}
-          onDone={() => { setAddOpen(false); refetch() }}
+          onClose={() => onAddClose?.()}
+          onDone={() => { onAddClose?.(); refetch() }}
         />
       )}
 

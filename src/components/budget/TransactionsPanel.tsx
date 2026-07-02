@@ -23,12 +23,9 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TableSortLabel from '@mui/material/TableSortLabel'
 import IconButton from '@mui/material/IconButton'
-import Button from '@mui/material/Button'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import CircularProgress from '@mui/material/CircularProgress'
-import Chip from '@mui/material/Chip'
-import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import ViewStreamIcon from '@mui/icons-material/ViewStream'
@@ -39,6 +36,8 @@ interface Props {
   budgetPeriodId: string
   budgetProfileId: string
   isEditable?: boolean
+  addOpen?: boolean
+  onAddClose?: () => void
 }
 
 function formatMoney(amount: number): string {
@@ -46,7 +45,7 @@ function formatMoney(amount: number): string {
 }
 
 function formatDate(ts: { seconds: bigint } | undefined): string {
-  if (!ts || ts.seconds === 0n) return '—'
+  if (!ts || ts.seconds === 0n) return ''
   return new Date(Number(ts.seconds) * 1000).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -58,15 +57,7 @@ function txAmount(t: Transaction): number {
   return Number(t.amount?.units ?? 0n) + (t.amount?.nanos ?? 0) / 1e9
 }
 
-type SortKey = 'name' | 'day' | 'category' | 'method' | 'owner' | 'amount'
-
-function resolveOwner(t: Transaction, methodMap: Map<string, PaymentMethod>, personMap: Map<string, BudgetPerson>): string {
-  const method = t.paymentMethodId ? methodMap.get(t.paymentMethodId) : undefined
-  const person = method?.budgetPersonId && method.budgetPersonId !== 0n
-    ? personMap.get(method.budgetPersonId.toString())
-    : undefined
-  return person?.userName ?? ''
-}
+type SortKey = 'name' | 'day' | 'amount'
 
 function resolveDay(t: Transaction): number {
   return Number(t.date?.seconds ?? 0n)
@@ -77,68 +68,27 @@ function compareTransactions(
   b: Transaction,
   key: SortKey,
   dir: 'asc' | 'desc',
-  categoryMap: Map<number, Category>,
-  methodMap: Map<string, PaymentMethod>,
-  personMap: Map<string, BudgetPerson>,
 ): number {
   const sign = dir === 'asc' ? 1 : -1
-
-  let primary = 0
   switch (key) {
-    case 'name':
-      primary = a.name.localeCompare(b.name) * sign
-      break
-    case 'day':
-      primary = (resolveDay(a) - resolveDay(b)) * sign
-      break
-    case 'category': {
-      const ca = a.categoryId ? (categoryMap.get(a.categoryId)?.name ?? '') : ''
-      const cb = b.categoryId ? (categoryMap.get(b.categoryId)?.name ?? '') : ''
-      primary = ca.localeCompare(cb) * sign
-      break
-    }
-    case 'method': {
-      const ma = a.paymentMethodId ? (methodMap.get(a.paymentMethodId)?.name ?? '') : ''
-      const mb = b.paymentMethodId ? (methodMap.get(b.paymentMethodId)?.name ?? '') : ''
-      primary = ma.localeCompare(mb) * sign
-      break
-    }
-    case 'owner':
-      primary = resolveOwner(a, methodMap, personMap).localeCompare(resolveOwner(b, methodMap, personMap)) * sign
-      break
-    case 'amount':
-      primary = (txAmount(a) - txAmount(b)) * sign
-      break
+    case 'name': return a.name.localeCompare(b.name) * sign
+    case 'day': return (resolveDay(a) - resolveDay(b)) * sign
+    case 'amount': return (txAmount(a) - txAmount(b)) * sign
   }
-
-  if (primary !== 0) return primary
-
-  // Tiebreak: day ASC, then owner ASC
-  if (key !== 'day') {
-    const dayDiff = resolveDay(a) - resolveDay(b)
-    if (dayDiff !== 0) return dayDiff
-  }
-  if (key !== 'owner') {
-    return resolveOwner(a, methodMap, personMap).localeCompare(resolveOwner(b, methodMap, personMap))
-  }
-  return 0
 }
 
 function SortHeader({
-  col,
-  sortKey,
-  sortDir,
-  onSort,
-  children,
+  col, sortKey, sortDir, onSort, align, children,
 }: {
   col: SortKey
   sortKey: SortKey
   sortDir: 'asc' | 'desc'
   onSort: (key: SortKey) => void
+  align?: 'left' | 'right'
   children: React.ReactNode
 }) {
   return (
-    <TableCell sortDirection={sortKey === col ? sortDir : false}>
+    <TableCell align={align} sortDirection={sortKey === col ? sortDir : false}>
       <TableSortLabel
         active={sortKey === col}
         direction={sortKey === col ? sortDir : 'asc'}
@@ -163,15 +113,8 @@ interface TableProps {
 }
 
 function TransactionTable({
-  transactions,
-  isLoading,
-  isEditable,
-  label,
-  categoryMap,
-  methodMap,
-  personMap,
-  onDeleted,
-  onEdit,
+  transactions, isLoading, isEditable, label,
+  categoryMap, methodMap, personMap, onDeleted, onEdit,
 }: TableProps) {
   const t = useTranslations('budget.transactions')
   const { showError } = useSnackbar()
@@ -202,34 +145,23 @@ function TransactionTable({
     }
   }
 
-  const sorted = [...transactions].sort((a, b) =>
-    compareTransactions(a, b, sortKey, sortDir, categoryMap, methodMap, personMap)
-  )
-
-  const total = transactions.reduce((sum, t) => sum + txAmount(t), 0)
-  const colSpan = isEditable ? 7 : 6
+  const sorted = [...transactions].sort((a, b) => compareTransactions(a, b, sortKey, sortDir))
+  const total = transactions.reduce((sum, tx) => sum + txAmount(tx), 0)
+  const colSpan = isEditable ? 3 : 2
 
   if (isLoading) return <CircularProgress size={20} />
 
   return (
     <Box sx={{ overflowX: 'auto' }}>
-      <Table size="small" sx={{ minWidth: 560 }}>
+      <Table size="small">
         <TableHead>
           <TableRow>
-            <SortHeader col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>{t('columns.item')}</SortHeader>
-            <SortHeader col="day" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>{t('columns.day')}</SortHeader>
-            <SortHeader col="category" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>{t('columns.category')}</SortHeader>
-            <SortHeader col="method" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>{t('columns.paymentMethod')}</SortHeader>
-            <SortHeader col="owner" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>{t('columns.owner')}</SortHeader>
-            <TableCell align="right" sortDirection={sortKey === 'amount' ? sortDir : false}>
-              <TableSortLabel
-                active={sortKey === 'amount'}
-                direction={sortKey === 'amount' ? sortDir : 'asc'}
-                onClick={() => handleSort('amount')}
-              >
-                {t('columns.amount')}
-              </TableSortLabel>
-            </TableCell>
+            <SortHeader col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+              {t('columns.item')}
+            </SortHeader>
+            <SortHeader col="amount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right">
+              {t('columns.amount')}
+            </SortHeader>
             {isEditable && <TableCell />}
           </TableRow>
         </TableHead>
@@ -241,47 +173,45 @@ function TransactionTable({
               </TableCell>
             </TableRow>
           ) : (
-            sorted.map((t) => {
-              const category = t.categoryId ? categoryMap.get(t.categoryId) : undefined
-              const method = t.paymentMethodId ? methodMap.get(t.paymentMethodId) : undefined
+            sorted.map((tx) => {
+              const category = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined
+              const method = tx.paymentMethodId ? methodMap.get(tx.paymentMethodId) : undefined
               const person = method?.budgetPersonId && method.budgetPersonId !== 0n
                 ? personMap.get(method.budgetPersonId.toString())
                 : undefined
-              const personName = person?.userName
+
+              const secondaryParts = [
+                formatDate(tx.date),
+                method?.name,
+                category?.name,
+                person?.userName,
+              ].filter(Boolean)
 
               return (
-                <TableRow key={t.id} hover>
-                  <TableCell>{t.name}</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(t.date)}</TableCell>
+                <TableRow key={tx.id} hover>
                   <TableCell>
-                    {category
-                      ? <Chip label={category.name} size="small" sx={category.color ? { bgcolor: category.color, color: 'white' } : {}} />
-                      : <Typography variant="body2" color="text.disabled">—</Typography>
-                    }
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <Typography variant="body2" fontWeight={500}>{tx.name}</Typography>
+                      {secondaryParts.length > 0 && (
+                        <Typography variant="caption" color="text.secondary">
+                          {secondaryParts.join(' · ')}
+                        </Typography>
+                      )}
+                    </Box>
                   </TableCell>
-                  <TableCell>
-                    {method
-                      ? <Chip label={method.name} size="small" sx={method.color ? { bgcolor: method.color, color: 'white' } : {}} />
-                      : <Typography variant="body2" color="text.disabled">—</Typography>
-                    }
-                  </TableCell>
-                  <TableCell>
-                    {personName
-                      ? <Chip label={personName} size="small" sx={person?.color ? { bgcolor: person.color, color: 'white' } : {}} />
-                      : <Typography variant="body2" color="text.disabled">—</Typography>
-                    }
-                  </TableCell>
-                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                    {formatMoney(txAmount(t))}
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap', verticalAlign: 'top', pt: 1.5 }}>
+                    {formatMoney(txAmount(tx))}
                   </TableCell>
                   {isEditable && (
-                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                      <IconButton size="small" onClick={() => onEdit(t)}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => handleDelete(t.id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap', verticalAlign: 'top', pt: 0.5 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <IconButton size="small" onClick={() => onEdit(tx)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleDelete(tx.id)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
                     </TableCell>
                   )}
                 </TableRow>
@@ -293,7 +223,6 @@ function TransactionTable({
           <TableFooter>
             <TableRow>
               <TableCell
-                colSpan={isEditable ? 5 : 4}
                 align="right"
                 sx={{ fontWeight: 700, color: 'text.primary', borderTop: 2, borderColor: 'divider' }}
               >
@@ -314,12 +243,11 @@ function TransactionTable({
   )
 }
 
-export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable = true }: Props) {
+export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable = true, addOpen = false, onAddClose }: Props) {
   const t = useTranslations('budget.transactions')
   const queryClient = useQueryClient()
   const client = useClient(BudgetService)
   const [viewMode, setViewMode] = useViewPreference('tabbed')
-  const [addOpen, setAddOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Transaction | null>(null)
   const [tabIndex, setTabIndex] = useState(0)
 
@@ -350,8 +278,8 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
 
   const fixedTxs = fixedData?.transactions ?? []
   const variableTxs = variableData?.transactions ?? []
-  const fixedTotal = fixedTxs.reduce((sum, t) => sum + txAmount(t), 0)
-  const variableTotal = variableTxs.reduce((sum, t) => sum + txAmount(t), 0)
+  const fixedTotal = fixedTxs.reduce((sum, tx) => sum + txAmount(tx), 0)
+  const variableTotal = variableTxs.reduce((sum, tx) => sum + txAmount(tx), 0)
   const grandTotal = fixedTotal + variableTotal
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['transactions', budgetPeriodId] })
@@ -369,22 +297,15 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
             </Typography>
           )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <ToggleButtonGroup
-            size="small"
-            value={viewMode}
-            exclusive
-            onChange={(_, v: ViewMode) => v && setViewMode(v)}
-          >
-            <ToggleButton value="tabbed"><TabIcon fontSize="small" /></ToggleButton>
-            <ToggleButton value="split"><ViewStreamIcon fontSize="small" /></ToggleButton>
-          </ToggleButtonGroup>
-          {isEditable && (
-            <Button size="small" startIcon={<AddIcon />} variant="outlined" onClick={() => setAddOpen(true)}>
-              {t('add')}
-            </Button>
-          )}
-        </Box>
+        <ToggleButtonGroup
+          size="small"
+          value={viewMode}
+          exclusive
+          onChange={(_, v: ViewMode) => v && setViewMode(v)}
+        >
+          <ToggleButton value="tabbed"><TabIcon fontSize="small" /></ToggleButton>
+          <ToggleButton value="split"><ViewStreamIcon fontSize="small" /></ToggleButton>
+        </ToggleButtonGroup>
       </Box>
 
       {viewMode === 'tabbed' ? (
@@ -417,8 +338,8 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
           budgetProfileId={budgetProfileId}
           open={addOpen}
           defaultTypeId={viewMode === 'tabbed' ? (tabIndex === 0 ? 1 : 2) : 1}
-          onClose={() => setAddOpen(false)}
-          onDone={() => { setAddOpen(false); refresh() }}
+          onClose={() => onAddClose?.()}
+          onDone={() => { onAddClose?.(); refresh() }}
         />
       )}
 

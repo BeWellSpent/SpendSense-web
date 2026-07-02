@@ -187,6 +187,12 @@
       "afterSavings": "Después de ahorros",
       "remainder": "Saldo restante"
     },
+    "fab": {
+      "label": "Agregar",
+      "addTransaction": "Agregar Transacción",
+      "addSavings": "Agregar Ahorro",
+      "addIncome": "Agregar Ingreso"
+    },
     "setup": {
       "steps": {
         "create": "Crear Presupuesto",

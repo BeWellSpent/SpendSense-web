@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
@@ -14,6 +15,15 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
+import SpeedDial from '@mui/material/SpeedDial'
+import SpeedDialAction from '@mui/material/SpeedDialAction'
+import SpeedDialIcon from '@mui/material/SpeedDialIcon'
+import AddIcon from '@mui/icons-material/Add'
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
+import SavingsIcon from '@mui/icons-material/Savings'
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
+
+type AddTarget = 'income' | 'savings' | 'transaction' | null
 
 interface Props {
   budgetId: string
@@ -21,8 +31,10 @@ interface Props {
 
 export function BudgetView({ budgetId }: Props) {
   const t = useTranslations('budget.view')
+  const tFab = useTranslations('budget.fab')
   const client = useClient(BudgetService)
   const userClient = useClient(UserService)
+  const [activeAdd, setActiveAdd] = useState<AddTarget>(null)
 
   const { data: meData } = useQuery({
     queryKey: ['me'],
@@ -53,7 +65,7 @@ export function BudgetView({ budgetId }: Props) {
   const showBeforeTax = effectiveCountry === 'US'
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pb: 10 }}>
       <Box>
         <Typography variant="h5" fontWeight={700}>{profile?.name}</Typography>
         {activePeriod?.startDate && activePeriod?.endDate && (
@@ -66,10 +78,19 @@ export function BudgetView({ budgetId }: Props) {
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 3 }}>
         <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}>
-          <IncomePanel budgetProfileId={budgetId} showBeforeTax={showBeforeTax} />
+          <IncomePanel
+            budgetProfileId={budgetId}
+            showBeforeTax={showBeforeTax}
+            addOpen={activeAdd === 'income'}
+            onAddClose={() => setActiveAdd(null)}
+          />
         </Box>
         <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}>
-          <SavingsPanel budgetProfileId={budgetId} />
+          <SavingsPanel
+            budgetProfileId={budgetId}
+            addOpen={activeAdd === 'savings'}
+            onAddClose={() => setActiveAdd(null)}
+          />
         </Box>
         <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}>
           <PaymentMethodsPanel budgetProfileId={budgetId} budgetPeriodId={activePeriod?.id} />
@@ -80,7 +101,12 @@ export function BudgetView({ budgetId }: Props) {
 
       <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}>
         {activePeriod ? (
-          <TransactionsPanel budgetPeriodId={activePeriod.id} budgetProfileId={budgetId} />
+          <TransactionsPanel
+            budgetPeriodId={activePeriod.id}
+            budgetProfileId={budgetId}
+            addOpen={activeAdd === 'transaction'}
+            onAddClose={() => setActiveAdd(null)}
+          />
         ) : (
           <Typography variant="body2" color="text.secondary">{t('noActivePeriod')}</Typography>
         )}
@@ -91,6 +117,28 @@ export function BudgetView({ budgetId }: Props) {
       <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}>
         <ExpensesPanel budgetProfileId={budgetId} budgetPeriodId={activePeriod?.id} />
       </Box>
+
+      <SpeedDial
+        ariaLabel={tFab('label')}
+        icon={<SpeedDialIcon openIcon={<AddIcon />} />}
+        sx={{ position: 'fixed', bottom: 24, right: 24 }}
+      >
+        <SpeedDialAction
+          icon={<ReceiptLongIcon />}
+          tooltipTitle={tFab('addTransaction')}
+          onClick={() => setActiveAdd('transaction')}
+        />
+        <SpeedDialAction
+          icon={<SavingsIcon />}
+          tooltipTitle={tFab('addSavings')}
+          onClick={() => setActiveAdd('savings')}
+        />
+        <SpeedDialAction
+          icon={<AttachMoneyIcon />}
+          tooltipTitle={tFab('addIncome')}
+          onClick={() => setActiveAdd('income')}
+        />
+      </SpeedDial>
     </Box>
   )
 }
