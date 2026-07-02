@@ -105,6 +105,31 @@
         "biWeekly": "quincenal",
         "monthly": "mensual",
         "yearly": "anual"
+      },
+      "addDialog": {
+        "title": "Agregar fuente de ahorro",
+        "name": "Nombre",
+        "namePlaceholder": "ej. Fondo de emergencia",
+        "amount": "Monto",
+        "frequency": "Frecuencia",
+        "owner": "Titular",
+        "paymentMethod": "Método de pago *",
+        "cancel": "Cancelar",
+        "save": "Guardar",
+        "saving": "Guardando…"
+      },
+      "editDialog": {
+        "title": "Editar fuente de ahorro",
+        "name": "Nombre",
+        "namePlaceholder": "ej. Fondo de emergencia",
+        "amount": "Monto",
+        "frequency": "Frecuencia",
+        "owner": "Titular",
+        "paymentMethod": "Método de pago",
+        "noPaymentMethod": "— Ninguno —",
+        "cancel": "Cancelar",
+        "save": "Guardar",
+        "saving": "Guardando…"
       }
     },
     "paymentMethods": {
@@ -178,13 +203,8 @@
       "removeRow": "Quitar fila",
       "noCategories": "No hay categorías aún — usa el selector para agregar una.",
       "addCategory": "Agregar categoría…",
-      "committedSavings": "Ahorros Comprometidos",
-      "source": "Fuente",
-      "monthlyPerPerson": "Mensual (por persona)",
-      "tax": "impuesto",
       "planSummary": "Resumen del Plan",
       "plannedAllocations": "Asignaciones planificadas + Gastos fijos",
-      "afterSavings": "Incluyendo ahorros",
       "remainder": "Saldo restante",
       "chart": {
         "pie": "Pastel",

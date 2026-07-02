@@ -74,6 +74,11 @@ export function SavingsPanel({ budgetProfileId, addOpen = false, onAddClose }: P
     queryFn: () => client.listBudgetPeople({ budgetProfileId }),
   })
 
+  const { data: pmData } = useQuery({
+    queryKey: ['payment-methods', budgetProfileId],
+    queryFn: () => client.listPaymentMethods({ budgetProfileId }),
+  })
+
   const { mutateAsync: doDelete } = useMutation({
     mutationFn: (id: bigint) => client.deleteSavingsSource({ id, budgetProfileId }),
   })
@@ -91,6 +96,7 @@ export function SavingsPanel({ budgetProfileId, addOpen = false, onAddClose }: P
   const sources = data?.sources ?? []
   const people = peopleData?.people ?? []
   const personMap = new Map(people.map((p) => [p.id.toString(), p.userName]))
+  const pmMap = new Map((pmData?.methods ?? []).map((pm) => [pm.id, pm.name]))
   const monthlyTotal = sources.reduce((sum, s) => sum + toMonthlyAmount(s), 0)
 
   if (isLoading) return <CircularProgress size={20} />
@@ -113,6 +119,7 @@ export function SavingsPanel({ budgetProfileId, addOpen = false, onAddClose }: P
             const personName = src.budgetPersonId !== 0n
               ? personMap.get(src.budgetPersonId.toString())
               : undefined
+            const pmName = src.paymentMethodId ? pmMap.get(src.paymentMethodId) : undefined
             return (
               <ListItem
                 key={src.id.toString()}
@@ -156,6 +163,7 @@ export function SavingsPanel({ budgetProfileId, addOpen = false, onAddClose }: P
                         <> · {t('federal')} {formatMoney(src.federalAmount.units, src.federalAmount.nanos)}</>
                       )}
                       {personName && <> · {personName}</>}
+                      {pmName && <> · {pmName}</>}
                     </>
                   }
                 />
