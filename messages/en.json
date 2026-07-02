@@ -176,8 +176,8 @@
       "total": "Total",
       "global": "global",
       "removeRow": "Remove row",
-      "noCategories": "No categories yet — use the picker below to add one.",
-      "addCategory": "Add category to plan…",
+      "noCategories": "No categories yet — use the picker to add one.",
+      "addCategory": "Add category…",
       "committedSavings": "Committed Savings",
       "source": "Source",
       "monthlyPerPerson": "Monthly (per person)",
@@ -185,7 +185,20 @@
       "planSummary": "Plan Summary",
       "plannedAllocations": "Planned allocations + Fixed expenses",
       "afterSavings": "After savings",
-      "remainder": "Remainder"
+      "remainder": "Remainder",
+      "chart": {
+        "pie": "Pie",
+        "bar": "Bar",
+        "byPerson": "By Person",
+        "byCategory": "By Category",
+        "noData": "No planned amounts yet"
+      },
+      "editDialog": {
+        "title": "Edit Planned Amount",
+        "plannedAmount": "Planned amount",
+        "cancel": "Cancel",
+        "save": "Save"
+      }
     },
     "fab": {
       "label": "Add",

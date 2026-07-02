@@ -176,8 +176,8 @@
       "total": "Total",
       "global": "global",
       "removeRow": "Quitar fila",
-      "noCategories": "No hay categorías aún — usa el selector de abajo para agregar una.",
-      "addCategory": "Agregar categoría al plan…",
+      "noCategories": "No hay categorías aún — usa el selector para agregar una.",
+      "addCategory": "Agregar categoría…",
       "committedSavings": "Ahorros Comprometidos",
       "source": "Fuente",
       "monthlyPerPerson": "Mensual (por persona)",
@@ -185,7 +185,20 @@
       "planSummary": "Resumen del Plan",
       "plannedAllocations": "Asignaciones planificadas + Gastos fijos",
       "afterSavings": "Después de ahorros",
-      "remainder": "Saldo restante"
+      "remainder": "Saldo restante",
+      "chart": {
+        "pie": "Pastel",
+        "bar": "Barras",
+        "byPerson": "Por Persona",
+        "byCategory": "Por Categoría",
+        "noData": "No hay montos planificados aún"
+      },
+      "editDialog": {
+        "title": "Editar Monto Planificado",
+        "plannedAmount": "Monto planificado",
+        "cancel": "Cancelar",
+        "save": "Guardar"
+      }
     },
     "fab": {
       "label": "Agregar",
