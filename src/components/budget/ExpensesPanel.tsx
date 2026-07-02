@@ -66,6 +66,7 @@ function actualColor(actual: number, plannedTotal: number): string | undefined {
   if (plannedTotal <= 0) return undefined
   const ratio = actual / plannedTotal
   if (ratio > 1) return 'error.main'
+  if (ratio >= 1) return 'success.main'
   if (ratio >= 0.9) return 'warning.main'
   return 'success.main'
 }
@@ -309,14 +310,12 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
     }).filter((d) => d.value > 0)
   })()
 
-  // savings
+  // savings — amount is already the monthly figure; frequency is the cadence, not a multiplier
   const savingsByPerson = new Map<string, number>()
   for (const s of savingsSources) {
     const personKey = s.budgetPersonId.toString()
     const amt = parseMoney(s.amount?.units ?? 0n, s.amount?.nanos ?? 0)
-    const freq = s.frequency
-    const mult = freq === 2 ? 52 / 12 : freq === 3 ? 26 / 12 : freq === 4 ? 1 : freq === 5 ? 1 / 12 : 0
-    savingsByPerson.set(personKey, (savingsByPerson.get(personKey) ?? 0) + amt * mult)
+    savingsByPerson.set(personKey, (savingsByPerson.get(personKey) ?? 0) + amt)
   }
   const savingsTotal = [...savingsByPerson.values()].reduce((a, b) => a + b, 0)
 
@@ -715,10 +714,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                   const personSources = savingsSources.filter((s) => s.budgetPersonId === p.id)
                   if (personSources.length === 0) return null
                   return personSources.map((s) => {
-                    const freq = s.frequency
-                    const mult = freq === 2 ? 52 / 12 : freq === 3 ? 26 / 12 : freq === 4 ? 1 : freq === 5 ? 1 / 12 : 0
                     const amt = parseMoney(s.amount?.units ?? 0n, s.amount?.nanos ?? 0)
-                    const monthly = amt * mult
                     return (
                       <TableRow key={s.id.toString()}>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}>
@@ -731,10 +727,10 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                         </TableCell>
                         {people.map((person) => (
                           <TableCell key={person.id.toString()} align="right">
-                            {person.id === p.id ? formatMoney(monthly) : '—'}
+                            {person.id === p.id ? formatMoney(amt) : '—'}
                           </TableCell>
                         ))}
-                        <TableCell align="right">{formatMoney(monthly)}</TableCell>
+                        <TableCell align="right">{formatMoney(amt)}</TableCell>
                       </TableRow>
                     )
                   })
