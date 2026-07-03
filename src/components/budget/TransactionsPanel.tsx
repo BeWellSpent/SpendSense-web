@@ -11,6 +11,7 @@ import { useViewPreference } from '@/hooks/useViewPreference'
 import { logger } from '@/lib/logger'
 import { AddTransactionModal } from './modals/AddTransactionModal'
 import { EditTransactionModal } from './modals/EditTransactionModal'
+import { MarkAsPaidDialog } from './modals/MarkAsPaidDialog'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Tabs from '@mui/material/Tabs'
@@ -25,10 +26,13 @@ import IconButton from '@mui/material/IconButton'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import CircularProgress from '@mui/material/CircularProgress'
+import Tooltip from '@mui/material/Tooltip'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ViewStreamIcon from '@mui/icons-material/ViewStream'
 import TabIcon from '@mui/icons-material/Tab'
 import type { ViewMode } from '@/hooks/useViewPreference'
@@ -58,6 +62,10 @@ function txAmount(t: Transaction): number {
   return Number(t.amount?.units ?? 0n) + (t.amount?.nanos ?? 0) / 1e9
 }
 
+function txPlannedAmount(t: Transaction): number {
+  return Number(t.plannedAmount?.units ?? 0n) + (t.plannedAmount?.nanos ?? 0) / 1e9
+}
+
 type SortKey = 'name' | 'day' | 'amount'
 
 function resolveDay(t: Transaction): number {
@@ -74,7 +82,7 @@ function compareTransactions(
   switch (key) {
     case 'name': return a.name.localeCompare(b.name) * sign
     case 'day': return (resolveDay(a) - resolveDay(b)) * sign
-    case 'amount': return (txAmount(a) - txAmount(b)) * sign
+    case 'amount': return (txPlannedAmount(a) - txPlannedAmount(b)) * sign
   }
 }
 
@@ -105,18 +113,21 @@ interface TableProps {
   transactions: Transaction[]
   isLoading: boolean
   isEditable: boolean
+  isFixed: boolean
   savingsCategoryId?: number
+  budgetPeriodId: string
   label: string
   categoryMap: Map<number, Category>
   methodMap: Map<string, PaymentMethod>
   personMap: Map<string, BudgetPerson>
   onDeleted: () => void
   onEdit: (t: Transaction) => void
+  onRefresh: () => void
 }
 
 function TransactionTable({
-  transactions, isLoading, isEditable, savingsCategoryId, label,
-  categoryMap, methodMap, personMap, onDeleted, onEdit,
+  transactions, isLoading, isEditable, isFixed, savingsCategoryId, budgetPeriodId, label,
+  categoryMap, methodMap, personMap, onDeleted, onEdit, onRefresh,
 }: TableProps) {
   const t = useTranslations('budget.transactions')
   const { showError } = useSnackbar()
@@ -125,6 +136,7 @@ function TransactionTable({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [sortKey, setSortKey] = useState<SortKey>('day')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [markPaidTarget, setMarkPaidTarget] = useState<Transaction | null>(null)
 
   const { mutateAsync: doDelete } = useMutation({
     mutationFn: (id: string) => client.deleteTransaction({ id }),
@@ -149,8 +161,13 @@ function TransactionTable({
     }
   }
 
-  const isRowEditable = (tx: Transaction) =>
-    isEditable && (savingsCategoryId == null || tx.categoryId !== savingsCategoryId)
+  const isSavingsRow = (tx: Transaction) =>
+    savingsCategoryId != null && tx.categoryId === savingsCategoryId
+
+  const isRowEditable = (tx: Transaction) => isEditable && !isSavingsRow(tx)
+
+  const canMarkPaid = (tx: Transaction) =>
+    isFixed && isEditable && !isSavingsRow(tx) && !tx.isPaid
 
   const sorted = [...transactions].sort((a, b) => compareTransactions(a, b, sortKey, sortDir))
 
@@ -159,6 +176,123 @@ function TransactionTable({
   if (isMobile) {
     const colSpan = isEditable ? 3 : 2
     return (
+      <>
+        <Box sx={{ overflowX: 'auto' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <SortHeader col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+                  {t('columns.item')}
+                </SortHeader>
+                <SortHeader col="amount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right">
+                  {isFixed ? t('columns.planned') : t('columns.amount')}
+                </SortHeader>
+                {isEditable && <TableCell />}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {sorted.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={colSpan} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                    {t('empty', { label })}
+                  </TableCell>
+                </TableRow>
+              ) : sorted.map((tx) => {
+                const category = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined
+                const method = tx.paymentMethodId ? methodMap.get(tx.paymentMethodId) : undefined
+                const person = method?.budgetPersonId && method.budgetPersonId !== 0n
+                  ? personMap.get(method.budgetPersonId.toString())
+                  : undefined
+                const dateStr = formatDate(tx.date)
+                return (
+                  <TableRow key={tx.id} hover>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.1 }}>
+                        <Typography variant="body2" fontWeight={500}>{tx.name}</Typography>
+                        {dateStr && (
+                          <Typography variant="caption" color="text.secondary">{dateStr}</Typography>
+                        )}
+                        {(method || person) && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {method && (
+                              <Typography variant="caption" sx={{ color: method.color || 'text.secondary' }}>{method.name}</Typography>
+                            )}
+                            {method && person && (
+                              <Typography variant="caption" color="text.secondary">·</Typography>
+                            )}
+                            {person && (
+                              <Typography variant="caption" sx={{ color: person.color || 'text.secondary' }}>{person.userName}</Typography>
+                            )}
+                          </Box>
+                        )}
+                        {category && (
+                          <Typography variant="caption" sx={{ color: category.color || 'text.secondary' }}>{category.name}</Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap', verticalAlign: 'top', pt: 1.5 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <Typography variant="body2">{formatMoney(txPlannedAmount(tx))}</Typography>
+                        {isFixed && tx.isPaid && (
+                          <Typography variant="caption" color="success.main">
+                            {t('paid')}: {formatMoney(txAmount(tx))}
+                          </Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    {isEditable && (
+                      <TableCell align="right" sx={{ whiteSpace: 'nowrap', verticalAlign: 'top', pt: 0.5 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          {canMarkPaid(tx) && (
+                            <Tooltip title={t('markAsPaid.title')}>
+                              <IconButton size="small" onClick={() => setMarkPaidTarget(tx)} color="default">
+                                <CheckCircleOutlineIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          {isFixed && tx.isPaid && (
+                            <Tooltip title={t('markAsPaid.alreadyPaid')}>
+                              <IconButton size="small" disabled>
+                                <CheckCircleIcon fontSize="small" color="success" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          {isRowEditable(tx) && (
+                            <>
+                              <IconButton size="small" onClick={() => onEdit(tx)}><EditIcon fontSize="small" /></IconButton>
+                              <IconButton size="small" onClick={() => handleDelete(tx.id)}><DeleteIcon fontSize="small" /></IconButton>
+                            </>
+                          )}
+                        </Box>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </Box>
+        {markPaidTarget && (
+          <MarkAsPaidDialog
+            transaction={markPaidTarget}
+            budgetPeriodId={budgetPeriodId}
+            onClose={() => setMarkPaidTarget(null)}
+            onDone={() => { setMarkPaidTarget(null); onRefresh() }}
+          />
+        )}
+      </>
+    )
+  }
+
+  // Desktop layout
+  // Fixed: Item | Day | Category | Payment Method | Owner | Planned | Actual | (actions)
+  // Variable: Item | Day | Category | Payment Method | Owner | Amount | (actions)
+  const colSpan = isFixed
+    ? (isEditable ? 8 : 7)
+    : (isEditable ? 7 : 6)
+
+  return (
+    <>
       <Box sx={{ overflowX: 'auto' }}>
         <Table size="small">
           <TableHead>
@@ -166,9 +300,24 @@ function TransactionTable({
               <SortHeader col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
                 {t('columns.item')}
               </SortHeader>
-              <SortHeader col="amount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right">
-                {t('columns.amount')}
+              <SortHeader col="day" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+                {t('columns.day')}
               </SortHeader>
+              <TableCell>{t('columns.category')}</TableCell>
+              <TableCell>{t('columns.paymentMethod')}</TableCell>
+              <TableCell>{t('columns.owner')}</TableCell>
+              {isFixed ? (
+                <>
+                  <SortHeader col="amount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right">
+                    {t('columns.planned')}
+                  </SortHeader>
+                  <TableCell align="right">{t('columns.actual')}</TableCell>
+                </>
+              ) : (
+                <SortHeader col="amount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right">
+                  {t('columns.amount')}
+                </SortHeader>
+              )}
               {isEditable && <TableCell />}
             </TableRow>
           </TableHead>
@@ -185,44 +334,73 @@ function TransactionTable({
               const person = method?.budgetPersonId && method.budgetPersonId !== 0n
                 ? personMap.get(method.budgetPersonId.toString())
                 : undefined
-              const dateStr = formatDate(tx.date)
               return (
                 <TableRow key={tx.id} hover>
                   <TableCell>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.1 }}>
-                      <Typography variant="body2" fontWeight={500}>{tx.name}</Typography>
-                      {dateStr && (
-                        <Typography variant="caption" color="text.secondary">{dateStr}</Typography>
-                      )}
-                      {(method || person) && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          {method && (
-                            <Typography variant="caption" sx={{ color: method.color || 'text.secondary' }}>{method.name}</Typography>
-                          )}
-                          {method && person && (
-                            <Typography variant="caption" color="text.secondary">·</Typography>
-                          )}
-                          {person && (
-                            <Typography variant="caption" sx={{ color: person.color || 'text.secondary' }}>{person.userName}</Typography>
-                          )}
-                        </Box>
-                      )}
-                      {category && (
-                        <Typography variant="caption" sx={{ color: category.color || 'text.secondary' }}>{category.name}</Typography>
-                      )}
-                    </Box>
+                    <Typography variant="body2" fontWeight={500}>{tx.name}</Typography>
                   </TableCell>
-                  <TableCell align="right" sx={{ whiteSpace: 'nowrap', verticalAlign: 'top', pt: 1.5 }}>
-                    {formatMoney(txAmount(tx))}
+                  <TableCell sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>
+                    {formatDate(tx.date)}
                   </TableCell>
+                  <TableCell>
+                    {category && (
+                      <Typography variant="body2" sx={{ color: category.color || 'text.secondary' }}>
+                        {category.name}
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {method && (
+                      <Typography variant="body2" sx={{ color: method.color || 'inherit' }}>
+                        {method.name}
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {person && (
+                      <Typography variant="body2" sx={{ color: person.color || 'text.secondary' }}>
+                        {person.userName}
+                      </Typography>
+                    )}
+                  </TableCell>
+                  {isFixed ? (
+                    <>
+                      <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                        {formatMoney(txPlannedAmount(tx))}
+                      </TableCell>
+                      <TableCell align="right" sx={{ whiteSpace: 'nowrap', color: tx.isPaid ? 'success.main' : 'text.disabled' }}>
+                        {tx.isPaid ? formatMoney(txAmount(tx)) : '—'}
+                      </TableCell>
+                    </>
+                  ) : (
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      {formatMoney(txAmount(tx))}
+                    </TableCell>
+                  )}
                   {isEditable && (
-                    <TableCell align="right" sx={{ whiteSpace: 'nowrap', verticalAlign: 'top', pt: 0.5 }}>
-                      {isRowEditable(tx) && (
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <IconButton size="small" onClick={() => onEdit(tx)}><EditIcon fontSize="small" /></IconButton>
-                          <IconButton size="small" onClick={() => handleDelete(tx.id)}><DeleteIcon fontSize="small" /></IconButton>
-                        </Box>
-                      )}
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        {canMarkPaid(tx) && (
+                          <Tooltip title={t('markAsPaid.title')}>
+                            <IconButton size="small" onClick={() => setMarkPaidTarget(tx)}>
+                              <CheckCircleOutlineIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {isFixed && tx.isPaid && (
+                          <Tooltip title={t('markAsPaid.alreadyPaid')}>
+                            <IconButton size="small" disabled>
+                              <CheckCircleIcon fontSize="small" color="success" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {isRowEditable(tx) && (
+                          <>
+                            <IconButton size="small" onClick={() => onEdit(tx)}><EditIcon fontSize="small" /></IconButton>
+                            <IconButton size="small" onClick={() => handleDelete(tx.id)}><DeleteIcon fontSize="small" /></IconButton>
+                          </>
+                        )}
+                      </Box>
                     </TableCell>
                   )}
                 </TableRow>
@@ -231,92 +409,15 @@ function TransactionTable({
           </TableBody>
         </Table>
       </Box>
-    )
-  }
-
-  // Desktop: expanded table with all columns
-  const colSpan = isEditable ? 7 : 6
-  return (
-    <Box sx={{ overflowX: 'auto' }}>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <SortHeader col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
-              {t('columns.item')}
-            </SortHeader>
-            <SortHeader col="day" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
-              {t('columns.day')}
-            </SortHeader>
-            <TableCell>{t('columns.category')}</TableCell>
-            <TableCell>{t('columns.paymentMethod')}</TableCell>
-            <TableCell>{t('columns.owner')}</TableCell>
-            <SortHeader col="amount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right">
-              {t('columns.amount')}
-            </SortHeader>
-            {isEditable && <TableCell />}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {sorted.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={colSpan} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                {t('empty', { label })}
-              </TableCell>
-            </TableRow>
-          ) : sorted.map((tx) => {
-            const category = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined
-            const method = tx.paymentMethodId ? methodMap.get(tx.paymentMethodId) : undefined
-            const person = method?.budgetPersonId && method.budgetPersonId !== 0n
-              ? personMap.get(method.budgetPersonId.toString())
-              : undefined
-            return (
-              <TableRow key={tx.id} hover>
-                <TableCell>
-                  <Typography variant="body2" fontWeight={500}>{tx.name}</Typography>
-                </TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>
-                  {formatDate(tx.date)}
-                </TableCell>
-                <TableCell>
-                  {category && (
-                    <Typography variant="body2" sx={{ color: category.color || 'text.secondary' }}>
-                      {category.name}
-                    </Typography>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {method && (
-                    <Typography variant="body2" sx={{ color: method.color || 'inherit' }}>
-                      {method.name}
-                    </Typography>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {person && (
-                    <Typography variant="body2" sx={{ color: person.color || 'text.secondary' }}>
-                      {person.userName}
-                    </Typography>
-                  )}
-                </TableCell>
-                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                  {formatMoney(txAmount(tx))}
-                </TableCell>
-                {isEditable && (
-                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                    {isRowEditable(tx) && (
-                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <IconButton size="small" onClick={() => onEdit(tx)}><EditIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={() => handleDelete(tx.id)}><DeleteIcon fontSize="small" /></IconButton>
-                      </Box>
-                    )}
-                  </TableCell>
-                )}
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
-    </Box>
+      {markPaidTarget && (
+        <MarkAsPaidDialog
+          transaction={markPaidTarget}
+          budgetPeriodId={budgetPeriodId}
+          onClose={() => setMarkPaidTarget(null)}
+          onDone={() => { setMarkPaidTarget(null); onRefresh() }}
+        />
+      )}
+    </>
   )
 }
 
@@ -359,13 +460,32 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
 
   const fixedTxs = fixedData?.transactions ?? []
   const variableTxs = variableData?.transactions ?? []
-  const fixedTotal = fixedTxs.reduce((sum, tx) => sum + txAmount(tx), 0)
+
+  // Fixed totals: planned total always; actual only from paid transactions
+  const fixedPlannedTotal = fixedTxs.reduce((sum, tx) => sum + txPlannedAmount(tx), 0)
+  const fixedActualTotal = fixedTxs.filter((tx) => tx.isPaid).reduce((sum, tx) => sum + txAmount(tx), 0)
   const variableTotal = variableTxs.reduce((sum, tx) => sum + txAmount(tx), 0)
-  const grandTotal = fixedTotal + variableTotal
+  const grandTotal = fixedPlannedTotal + variableTotal
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['transactions', budgetPeriodId] })
 
-  const sharedTableProps = { isEditable, savingsCategoryId, categoryMap, methodMap, personMap, onDeleted: refresh, onEdit: setEditTarget }
+  const sharedTableProps = {
+    isEditable,
+    savingsCategoryId,
+    budgetPeriodId,
+    categoryMap,
+    methodMap,
+    personMap,
+    onDeleted: refresh,
+    onEdit: setEditTarget,
+    onRefresh: refresh,
+  }
+
+  const fixedLabel = fixedTxs.length
+    ? `${t('fixed')} · ${formatMoney(fixedPlannedTotal)}${fixedActualTotal > 0 ? ` / ${formatMoney(fixedActualTotal)} ${t('paid')}` : ''}`
+    : t('fixed')
+
+  const variableLabel = variableTxs.length ? `${t('variable')} · ${formatMoney(variableTotal)}` : t('variable')
 
   return (
     <Box>
@@ -392,23 +512,23 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
       {viewMode === 'tabbed' ? (
         <>
           <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 1 }}>
-            <Tab label={fixedTxs.length ? `${t('fixed')} · ${formatMoney(fixedTotal)}` : t('fixed')} />
-            <Tab label={variableTxs.length ? `${t('variable')} · ${formatMoney(variableTotal)}` : t('variable')} />
+            <Tab label={fixedLabel} />
+            <Tab label={variableLabel} />
           </Tabs>
           {tabIndex === 0
-            ? <TransactionTable {...sharedTableProps} transactions={fixedTxs} isLoading={fixedLoading} label={t('fixed')} />
-            : <TransactionTable {...sharedTableProps} transactions={variableTxs} isLoading={variableLoading} label={t('variable')} />
+            ? <TransactionTable {...sharedTableProps} isFixed transactions={fixedTxs} isLoading={fixedLoading} label={t('fixed')} />
+            : <TransactionTable {...sharedTableProps} isFixed={false} transactions={variableTxs} isLoading={variableLoading} label={t('variable')} />
           }
         </>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
           <Box>
             <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>{t('fixed').toUpperCase()}</Typography>
-            <TransactionTable {...sharedTableProps} transactions={fixedTxs} isLoading={fixedLoading} label={t('fixed')} />
+            <TransactionTable {...sharedTableProps} isFixed transactions={fixedTxs} isLoading={fixedLoading} label={t('fixed')} />
           </Box>
           <Box>
             <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>{t('variable').toUpperCase()}</Typography>
-            <TransactionTable {...sharedTableProps} transactions={variableTxs} isLoading={variableLoading} label={t('variable')} />
+            <TransactionTable {...sharedTableProps} isFixed={false} transactions={variableTxs} isLoading={variableLoading} label={t('variable')} />
           </Box>
         </Box>
       )}

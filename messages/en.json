@@ -182,13 +182,25 @@
       "add": "Add",
       "fixed": "Fixed",
       "variable": "Variable",
+      "paid": "Paid",
       "columns": {
         "item": "Item",
         "day": "Day",
         "category": "Category",
         "paymentMethod": "Payment Method",
         "owner": "Owner",
-        "amount": "Amount"
+        "amount": "Amount",
+        "planned": "Planned",
+        "actual": "Actual"
+      },
+      "markAsPaid": {
+        "title": "Mark as Paid",
+        "alreadyPaid": "Already paid",
+        "description": "Confirm payment details for \"{name}\".",
+        "amount": "Amount paid",
+        "date": "Payment date",
+        "confirm": "Confirm",
+        "cancel": "Cancel"
       },
       "empty": "No {label} transactions yet.",
       "subtotal": "{label} subtotal"

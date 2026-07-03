@@ -278,10 +278,12 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
   }
 
   // actual per category (total) and per person per category
+  // Fixed transactions only contribute to actual when marked as paid; variable always count
   const txnActualByCat = new Map<number, number>()
   const txnActualByPersonCat = new Map<string, number>()
   for (const tx of transactions) {
     if (!tx.categoryId) continue
+    if (tx.transactionTypeId === 1 && !tx.isPaid) continue
     const amt = parseMoney(tx.amount?.units ?? 0n, tx.amount?.nanos ?? 0)
     txnActualByCat.set(tx.categoryId, (txnActualByCat.get(tx.categoryId) ?? 0) + amt)
     const personId = tx.paymentMethodId ? pmPersonMap.get(tx.paymentMethodId) : undefined

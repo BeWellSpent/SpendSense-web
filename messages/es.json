@@ -182,13 +182,25 @@
       "add": "Agregar",
       "fixed": "Fijos",
       "variable": "Variables",
+      "paid": "Pagado",
       "columns": {
         "item": "Concepto",
         "day": "Día",
         "category": "Categoría",
         "paymentMethod": "Método de Pago",
         "owner": "Titular",
-        "amount": "Monto"
+        "amount": "Monto",
+        "planned": "Planificado",
+        "actual": "Real"
+      },
+      "markAsPaid": {
+        "title": "Marcar como pagado",
+        "alreadyPaid": "Ya pagado",
+        "description": "Confirma los detalles de pago de \"{name}\".",
+        "amount": "Monto pagado",
+        "date": "Fecha de pago",
+        "confirm": "Confirmar",
+        "cancel": "Cancelar"
       },
       "empty": "No hay transacciones {label} aún.",
       "subtotal": "Subtotal {label}"
