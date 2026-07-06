@@ -360,8 +360,12 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
   }, 0)
 
   const fixedExpenseTotal = transactions
-    .filter((tx) => tx.transactionTypeId === 1 && (!tx.categoryId || !catIdsWithAllocs.has(tx.categoryId)))
-    .reduce((sum, tx) => sum + parseMoney(tx.amount?.units ?? 0n, tx.amount?.nanos ?? 0), 0)
+    .filter((tx) =>
+      tx.transactionTypeId === 1 &&
+      (!tx.categoryId || !catIdsWithAllocs.has(tx.categoryId)) &&
+      (!savingsCat || tx.categoryId !== savingsCat.id),
+    )
+    .reduce((sum, tx) => sum + parseMoney(tx.plannedAmount?.units ?? 0n, tx.plannedAmount?.nanos ?? 0), 0)
 
   const incomeTotal = incomeSources.reduce(
     (sum, s) => sum + parseMoney(s.defaultAmount?.units ?? 0n, s.defaultAmount?.nanos ?? 0),
