@@ -232,6 +232,23 @@
         "save": "Save"
       }
     },
+    "fixedExpense": {
+      "addTitle": "Add Fixed Expense",
+      "editTitle": "Edit Fixed Expense",
+      "cancel": "Cancel",
+      "add": "Add",
+      "save": "Save",
+      "saving": "Saving…",
+      "fields": {
+        "name": "Description",
+        "amount": "Planned amount",
+        "dayOfMonth": "Day of month",
+        "dayOfMonthHint": "Which day of the month this expense falls on",
+        "category": "Category",
+        "noCategory": "— None —",
+        "paymentMethod": "Payment method"
+      }
+    },
     "fab": {
       "label": "Add",
       "addTransaction": "Add Transaction",

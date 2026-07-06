@@ -10,7 +10,9 @@ import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { useViewPreference } from '@/hooks/useViewPreference'
 import { logger } from '@/lib/logger'
 import { AddTransactionModal } from './modals/AddTransactionModal'
+import { AddFixedExpenseModal } from './modals/AddFixedExpenseModal'
 import { EditTransactionModal } from './modals/EditTransactionModal'
+import { EditFixedExpenseModal } from './modals/EditFixedExpenseModal'
 import { MarkAsPaidDialog } from './modals/MarkAsPaidDialog'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -116,6 +118,7 @@ interface TableProps {
   isFixed: boolean
   savingsCategoryId?: number
   budgetPeriodId: string
+  budgetProfileId: string
   label: string
   categoryMap: Map<number, Category>
   methodMap: Map<string, PaymentMethod>
@@ -126,7 +129,7 @@ interface TableProps {
 }
 
 function TransactionTable({
-  transactions, isLoading, isEditable, isFixed, savingsCategoryId, budgetPeriodId, label,
+  transactions, isLoading, isEditable, isFixed, savingsCategoryId, budgetPeriodId, budgetProfileId, label,
   categoryMap, methodMap, personMap, onDeleted, onEdit, onRefresh,
 }: TableProps) {
   const t = useTranslations('budget.transactions')
@@ -138,14 +141,22 @@ function TransactionTable({
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [markPaidTarget, setMarkPaidTarget] = useState<Transaction | null>(null)
 
-  const { mutateAsync: doDelete } = useMutation({
+  const { mutateAsync: doDeleteTx } = useMutation({
     mutationFn: (id: string) => client.deleteTransaction({ id }),
   })
+  const { mutateAsync: doDeleteFixed } = useMutation({
+    mutationFn: (id: string) => client.deleteFixedExpense({ id, budgetProfileId }),
+  })
 
-  async function handleDelete(id: string) {
+  async function handleDelete(tx: Transaction) {
     try {
-      await doDelete(id)
-      logger.info('transaction.delete', { id })
+      if (isFixed && tx.fixedExpenseId) {
+        await doDeleteFixed(tx.fixedExpenseId)
+        logger.info('fixedExpense.delete', { id: tx.fixedExpenseId })
+      } else {
+        await doDeleteTx(tx.id)
+        logger.info('transaction.delete', { id: tx.id })
+      }
       onDeleted()
     } catch (err) {
       showError(err)
@@ -260,7 +271,7 @@ function TransactionTable({
                           {isRowEditable(tx) && (
                             <>
                               <IconButton size="small" onClick={() => onEdit(tx)}><EditIcon fontSize="small" /></IconButton>
-                              <IconButton size="small" onClick={() => handleDelete(tx.id)}><DeleteIcon fontSize="small" /></IconButton>
+                              <IconButton size="small" onClick={() => handleDelete(tx)}><DeleteIcon fontSize="small" /></IconButton>
                             </>
                           )}
                         </Box>
@@ -397,7 +408,7 @@ function TransactionTable({
                         {isRowEditable(tx) && (
                           <>
                             <IconButton size="small" onClick={() => onEdit(tx)}><EditIcon fontSize="small" /></IconButton>
-                            <IconButton size="small" onClick={() => handleDelete(tx.id)}><DeleteIcon fontSize="small" /></IconButton>
+                            <IconButton size="small" onClick={() => handleDelete(tx)}><DeleteIcon fontSize="small" /></IconButton>
                           </>
                         )}
                       </Box>
@@ -473,6 +484,7 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
     isEditable,
     savingsCategoryId,
     budgetPeriodId,
+    budgetProfileId,
     categoryMap,
     methodMap,
     personMap,
@@ -533,25 +545,43 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
         </Box>
       )}
 
-      {isEditable && (
-        <AddTransactionModal
-          budgetPeriodId={budgetPeriodId}
-          budgetProfileId={budgetProfileId}
-          open={addOpen}
-          defaultTypeId={viewMode === 'tabbed' ? (tabIndex === 0 ? 1 : 2) : 1}
-          onClose={() => onAddClose?.()}
-          onDone={() => { onAddClose?.(); refresh() }}
-        />
-      )}
+      {isEditable && (() => {
+        const addIsFixed = addOpen && (viewMode !== 'tabbed' || tabIndex === 0)
+        return addIsFixed ? (
+          <AddFixedExpenseModal
+            budgetProfileId={budgetProfileId}
+            budgetPeriodId={budgetPeriodId}
+            open={addOpen}
+            onClose={() => onAddClose?.()}
+            onDone={() => { onAddClose?.(); refresh() }}
+          />
+        ) : (
+          <AddTransactionModal
+            budgetPeriodId={budgetPeriodId}
+            budgetProfileId={budgetProfileId}
+            open={addOpen}
+            defaultTypeId={2}
+            onClose={() => onAddClose?.()}
+            onDone={() => { onAddClose?.(); refresh() }}
+          />
+        )
+      })()}
 
-      {editTarget && (
+      {editTarget && (editTarget.fixedExpenseId ? (
+        <EditFixedExpenseModal
+          budgetProfileId={budgetProfileId}
+          transaction={editTarget}
+          onClose={() => setEditTarget(null)}
+          onDone={() => { setEditTarget(null); refresh() }}
+        />
+      ) : (
         <EditTransactionModal
           budgetProfileId={budgetProfileId}
           transaction={editTarget}
           onClose={() => setEditTarget(null)}
           onDone={() => { setEditTarget(null); refresh() }}
         />
-      )}
+      ))}
     </Box>
   )
 }

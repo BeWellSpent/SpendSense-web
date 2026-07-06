@@ -232,6 +232,23 @@
         "save": "Guardar"
       }
     },
+    "fixedExpense": {
+      "addTitle": "Agregar Gasto Fijo",
+      "editTitle": "Editar Gasto Fijo",
+      "cancel": "Cancelar",
+      "add": "Agregar",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "fields": {
+        "name": "Descripción",
+        "amount": "Monto planificado",
+        "dayOfMonth": "Día del mes",
+        "dayOfMonthHint": "Qué día del mes cae este gasto",
+        "category": "Categoría",
+        "noCategory": "— Ninguna —",
+        "paymentMethod": "Método de pago"
+      }
+    },
     "fab": {
       "label": "Agregar",
       "addTransaction": "Agregar Transacción",
