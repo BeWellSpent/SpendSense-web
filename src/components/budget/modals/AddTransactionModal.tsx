@@ -63,13 +63,16 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
   const [categoryId, setCategoryId] = useState<number>(0)
   const [paymentMethodId, setPaymentMethodId] = useState('')
   const [typeId, setTypeId] = useState<number>(defaultTypeId)
-  const [recurring, setRecurring] = useState(false)
+  const [recurring, setRecurring] = useState(defaultTypeId === 1)
   const client = useClient(BudgetService)
 
   const isFixed = typeId === 1
 
   useEffect(() => {
-    if (open) setTypeId(defaultTypeId)
+    if (open) {
+      setTypeId(defaultTypeId)
+      setRecurring(defaultTypeId === 1)
+    }
   }, [open, defaultTypeId])
 
   const { data: categoriesData } = useQuery({
@@ -139,7 +142,7 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
         fullWidth
         inputProps={{ min: 0, step: '0.01' }}
       />
-      <TextField select label="Type" value={typeId} onChange={(e) => setTypeId(Number(e.target.value))} fullWidth>
+      <TextField select label="Type" value={typeId} onChange={(e) => { const t = Number(e.target.value); setTypeId(t); setRecurring(t === 1) }} fullWidth>
         <MenuItem value={1}>Fixed</MenuItem>
         <MenuItem value={2}>Variable</MenuItem>
       </TextField>
