@@ -101,7 +101,7 @@ export function EditFixedExpenseModal({ budgetProfileId, transaction, onClose, o
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             fullWidth
-            inputProps={{ min: 0, step: '0.01' }}
+            inputProps={{ min: 0, step: '0.01', inputMode: 'decimal' }}
           />
           <TextField
             label={t('fields.dayOfMonth')}
@@ -109,7 +109,7 @@ export function EditFixedExpenseModal({ budgetProfileId, transaction, onClose, o
             value={dayOfMonth}
             onChange={(e) => setDayOfMonth(Math.min(31, Math.max(1, Number(e.target.value))))}
             fullWidth
-            inputProps={{ min: 1, max: 31 }}
+            inputProps={{ min: 1, max: 31, inputMode: 'decimal' }}
             helperText={t('fields.dayOfMonthHint')}
           />
           <TextField select label={t('fields.category')} value={categoryId} onChange={(e) => setCategoryId(Number(e.target.value))} fullWidth>

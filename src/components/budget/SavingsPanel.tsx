@@ -45,19 +45,6 @@ const FREQ_KEY: Record<RecurringType, string> = {
   [RecurringType.YEARLY]: 'yearly',
 }
 
-const MONTHLY_MULTIPLIER: Record<RecurringType, number> = {
-  [RecurringType.UNSPECIFIED]: 0,
-  [RecurringType.ONE_OFF]: 0,
-  [RecurringType.WEEKLY]: 52 / 12,
-  [RecurringType.BI_WEEKLY]: 26 / 12,
-  [RecurringType.MONTHLY]: 1,
-  [RecurringType.YEARLY]: 1 / 12,
-}
-
-function toMonthlyAmount(src: SavingsSource): number {
-  const amount = Number(src.amount?.units ?? 0n) + (src.amount?.nanos ?? 0) / 1e9
-  return amount * (MONTHLY_MULTIPLIER[src.frequency] ?? 0)
-}
 
 export function SavingsPanel({ budgetProfileId, activePeriodStart, addOpen = false, onAddClose }: Props) {
   const t = useTranslations('budget.savings')
@@ -100,7 +87,7 @@ export function SavingsPanel({ budgetProfileId, activePeriodStart, addOpen = fal
   const people = peopleData?.people ?? []
   const personMap = new Map(people.map((p) => [p.id.toString(), p.userName]))
   const pmMap = new Map((pmData?.methods ?? []).map((pm) => [pm.id, pm.name]))
-  const monthlyTotal = sources.reduce((sum, s) => sum + toMonthlyAmount(s), 0)
+  const savingsTotal = sources.reduce((sum, s) => sum + Number(s.amount?.units ?? 0n) + (s.amount?.nanos ?? 0) / 1e9, 0)
 
   if (isLoading) return <CircularProgress size={20} />
 
@@ -111,7 +98,7 @@ export function SavingsPanel({ budgetProfileId, activePeriodStart, addOpen = fal
           <Typography variant="subtitle1" fontWeight={600}>{t('title')}</Typography>
         </Box>
         <Typography variant="subtitle2" color="info.main">
-          {monthlyTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} {t('perMonth')}
+          {savingsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
         </Typography>
       </Box>
       {sources.length === 0 ? (

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import { useClient } from '@/hooks/useClient'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
@@ -20,7 +20,6 @@ import Stack from '@mui/material/Stack'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
-import Box from '@mui/material/Box'
 
 interface Props {
   budgetPeriodId: string
@@ -47,15 +46,11 @@ function dateStringToTimestamp(str: string): { seconds: bigint; nanos: number } 
   return { seconds: BigInt(Math.floor(Date.UTC(year, month - 1, day) / 1000)), nanos: 0 }
 }
 
-function dayOfMonthToTimestamp(day: number): { seconds: bigint; nanos: number } {
-  const now = new Date()
-  return { seconds: BigInt(Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day) / 1000)), nanos: 0 }
-}
-
 export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, embedded, defaultTypeId = 1, onClose, onSkip, onDone }: Props) {
   const { showError } = useSnackbar()
   const theme = useTheme()
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+  const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(todayString)
@@ -79,7 +74,8 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
     queryKey: ['categories'],
     queryFn: () => client.listCategories({}),
   })
-  const { mutateAsync, isPending } = useMutation({
+
+  const { mutateAsync: createTx, isPending: txPending } = useMutation({
     mutationFn: (vars: {
       name: string
       amount: { units: bigint; nanos: number }
@@ -92,34 +88,55 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
     }) => client.createTransaction({ budgetPeriodId, plannedAmount: vars.amount, ...vars }),
   })
 
+  const { mutateAsync: createFixed, isPending: fixedPending } = useMutation({
+    mutationFn: (vars: {
+      name: string
+      plannedAmount: { units: bigint; nanos: number }
+      categoryId: number
+      paymentMethodId: string
+      dayOfMonth: number
+    }) => client.createFixedExpense({ budgetProfileId, ...vars }),
+  })
+
+  const isPending = txPending || fixedPending
+
   const isDateValid = isFixed ? dayOfMonth >= 1 && dayOfMonth <= 31 : !!date
-  const canSave = !!name.trim() && !!amount && !!paymentMethodId && isDateValid
+  const canSave = !!name.trim() && !!amount && isDateValid && (isFixed || !!paymentMethodId)
+
+  function resetForm() {
+    setName('')
+    setAmount('')
+    setDate(todayString())
+    setDayOfMonth(todayDay())
+    setCategoryId(0)
+    setPaymentMethodId('')
+    setTypeId(defaultTypeId)
+    setRecurring(false)
+  }
 
   async function handleSave() {
     if (!canSave) return
-    const units = Math.floor(parseFloat(amount))
-    const nanos = Math.round((parseFloat(amount) - units) * 1e9)
-    const txDate = isFixed ? dayOfMonthToTimestamp(dayOfMonth) : dateStringToTimestamp(date)
+    const units = BigInt(Math.floor(parseFloat(amount)))
+    const nanos = Math.round((parseFloat(amount) - Number(units)) * 1e9)
     try {
-      await mutateAsync({
-        name,
-        amount: { units: BigInt(units), nanos },
-        date: txDate,
-        categoryId,
-        paymentMethodId,
-        transactionTypeId: typeId,
-        transactionFrequencyId: recurring ? 4 : 1,
-        recurring,
-      })
-      logger.info('transaction.create', { budgetPeriodId, name, amount })
-      setName('')
-      setAmount('')
-      setDate(todayString())
-      setDayOfMonth(todayDay())
-      setCategoryId(0)
-      setPaymentMethodId('')
-      setTypeId(defaultTypeId)
-      setRecurring(false)
+      if (isFixed) {
+        await createFixed({ name, plannedAmount: { units, nanos }, categoryId, paymentMethodId, dayOfMonth })
+        logger.info('fixedExpense.create', { budgetProfileId, name, amount })
+        queryClient.invalidateQueries({ queryKey: ['transactions', budgetPeriodId, 1] })
+      } else {
+        await createTx({
+          name,
+          amount: { units, nanos },
+          date: dateStringToTimestamp(date),
+          categoryId,
+          paymentMethodId,
+          transactionTypeId: typeId,
+          transactionFrequencyId: recurring ? 4 : 1,
+          recurring,
+        })
+        logger.info('transaction.create', { budgetPeriodId, name, amount })
+      }
+      resetForm()
       onDone()
     } catch (err) {
       showError(err)
@@ -140,7 +157,7 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
         fullWidth
-        inputProps={{ min: 0, step: '0.01' }}
+        inputProps={{ min: 0, step: '0.01', inputMode: 'decimal' }}
       />
       <TextField select label="Type" value={typeId} onChange={(e) => { const t = Number(e.target.value); setTypeId(t); setRecurring(t === 1) }} fullWidth>
         <MenuItem value={1}>Fixed</MenuItem>
@@ -153,7 +170,7 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
           value={dayOfMonth}
           onChange={(e) => setDayOfMonth(Math.min(31, Math.max(1, Number(e.target.value))))}
           fullWidth
-          inputProps={{ min: 1, max: 31 }}
+          inputProps={{ min: 1, max: 31, inputMode: 'decimal' }}
           helperText="Which day of the month this expense falls on"
         />
       ) : (
@@ -178,7 +195,7 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
         value={paymentMethodId}
         onChange={setPaymentMethodId}
         label="Payment method"
-        required
+        required={!isFixed}
         size="medium"
       />
       {!isFixed && (

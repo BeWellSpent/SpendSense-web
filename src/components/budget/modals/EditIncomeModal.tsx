@@ -105,7 +105,7 @@ export function EditIncomeModal({ budgetProfileId, source, showBeforeTax, onClos
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             fullWidth
-            inputProps={{ min: 0, step: '0.01' }}
+            inputProps={{ min: 0, step: '0.01', inputMode: 'decimal' }}
             error={!!amountError}
             helperText={amountError}
           />

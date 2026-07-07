@@ -10,7 +10,6 @@ import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { useViewPreference } from '@/hooks/useViewPreference'
 import { logger } from '@/lib/logger'
 import { AddTransactionModal } from './modals/AddTransactionModal'
-import { AddFixedExpenseModal } from './modals/AddFixedExpenseModal'
 import { EditTransactionModal } from './modals/EditTransactionModal'
 import { EditFixedExpenseModal } from './modals/EditFixedExpenseModal'
 import { MarkAsPaidDialog } from './modals/MarkAsPaidDialog'
@@ -546,27 +545,16 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
         </Box>
       )}
 
-      {isEditable && (() => {
-        const addIsFixed = addOpen && (viewMode !== 'tabbed' || tabIndex === 0)
-        return addIsFixed ? (
-          <AddFixedExpenseModal
-            budgetProfileId={budgetProfileId}
-            budgetPeriodId={budgetPeriodId}
-            open={addOpen}
-            onClose={() => onAddClose?.()}
-            onDone={() => { onAddClose?.(); refresh() }}
-          />
-        ) : (
-          <AddTransactionModal
-            budgetPeriodId={budgetPeriodId}
-            budgetProfileId={budgetProfileId}
-            open={addOpen}
-            defaultTypeId={2}
-            onClose={() => onAddClose?.()}
-            onDone={() => { onAddClose?.(); refresh() }}
-          />
-        )
-      })()}
+      {isEditable && (
+        <AddTransactionModal
+          budgetPeriodId={budgetPeriodId}
+          budgetProfileId={budgetProfileId}
+          open={addOpen}
+          defaultTypeId={viewMode !== 'tabbed' || tabIndex === 0 ? 1 : 2}
+          onClose={() => onAddClose?.()}
+          onDone={() => { onAddClose?.(); refresh() }}
+        />
+      )}
 
       {editTarget && (editTarget.fixedExpenseId ? (
         <EditFixedExpenseModal

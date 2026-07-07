@@ -298,19 +298,21 @@ export function BudgetSidebar({ budgetId, children }: Props) {
             }}
           >
             {navItems.map((item) => (
-              <Tooltip key={item.label} title={item.disabled ? (item.tooltip ?? '') : ''} placement="top">
-                <span>
-                  <IconButton
-                    onClick={item.action}
-                    disabled={item.disabled}
-                    size="small"
-                    sx={{ flexDirection: 'column', borderRadius: 2, px: 2 }}
-                  >
-                    {item.icon}
-                    <Typography variant="caption" display="block" sx={{ mt: 0.25 }}>{item.label}</Typography>
-                  </IconButton>
-                </span>
-              </Tooltip>
+              <IconButton
+                key={item.label}
+                onClick={item.action}
+                disabled={item.disabled}
+                size="small"
+                sx={{ flexDirection: 'column', borderRadius: 2, px: 2 }}
+              >
+                {item.icon}
+                <Typography variant="caption" display="block" sx={{ mt: 0.25 }}>{item.label}</Typography>
+                {item.disabled && item.tooltip && (
+                  <Typography variant="caption" display="block" sx={{ fontSize: '0.55rem', lineHeight: 1, color: 'text.disabled' }}>
+                    {item.tooltip}
+                  </Typography>
+                )}
+              </IconButton>
             ))}
             <IconButton onClick={handleLogout} size="small" sx={{ flexDirection: 'column', borderRadius: 2, px: 2 }}>
               <LogoutIcon />

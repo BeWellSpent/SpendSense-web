@@ -146,7 +146,7 @@ export function EditTransactionModal({ budgetProfileId, transaction, onClose, on
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             fullWidth
-            inputProps={{ min: 0, step: '0.01' }}
+            inputProps={{ min: 0, step: '0.01', inputMode: 'decimal' }}
           />
           <TextField
             select
@@ -165,7 +165,7 @@ export function EditTransactionModal({ budgetProfileId, transaction, onClose, on
               value={dayOfMonth}
               onChange={(e) => setDayOfMonth(Math.min(31, Math.max(1, Number(e.target.value))))}
               fullWidth
-              inputProps={{ min: 1, max: 31 }}
+              inputProps={{ min: 1, max: 31, inputMode: 'decimal' }}
               helperText="Which day of the month this expense falls on"
             />
           ) : (

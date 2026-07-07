@@ -87,7 +87,7 @@ export function MarkAsPaidDialog({ transaction: tx, budgetPeriodId, isSavings = 
             <TextField
               label={t('amount')}
               type="number"
-              inputProps={{ min: 0, step: 0.01 }}
+              inputProps={{ min: 0, step: 0.01, inputMode: 'decimal' }}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               fullWidth
