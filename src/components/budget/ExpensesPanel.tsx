@@ -418,7 +418,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
       totalOverspend += actual - planned
     }
   }
-  const hasAnyActual = txnActualByCat.size > 0
+  const actualTotal = [...txnActualByCat.values()].reduce((a, b) => a + b, 0)
 
   const footerCellSx = { borderTop: '2px solid', borderColor: 'divider', fontSize: '0.95rem', fontWeight: 700 }
 
@@ -839,18 +839,19 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                 {formatMoney(remainder)}
               </Typography>
             </Box>
-            {hasAnyActual && (
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary">{t('overBudget')}</Typography>
-                {overBudgetCount === 0 ? (
-                  <Typography variant="body2" fontWeight={700} sx={{ ml: 2 }} color="success.main">
-                    {t('onTrack')}
+            {actualTotal > 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Typography variant="body2" color="text.secondary">{t('actual')}</Typography>
+                <Box sx={{ textAlign: 'right', ml: 2 }}>
+                  <Typography variant="body2" fontWeight={700} sx={{ whiteSpace: 'nowrap' }} color={actualColor(actualTotal, totalCommitted)}>
+                    {formatMoney(actualTotal)}
                   </Typography>
-                ) : (
-                  <Typography variant="body2" fontWeight={700} sx={{ ml: 2, whiteSpace: 'nowrap' }} color="error.main">
-                    {t('categoriesOver', { count: overBudgetCount })} · {formatMoney(totalOverspend)}
-                  </Typography>
-                )}
+                  {overBudgetCount > 0 && (
+                    <Typography variant="caption" color="error.main" sx={{ whiteSpace: 'nowrap' }}>
+                      {t('categoriesOver', { count: overBudgetCount })} · {formatMoney(totalOverspend)}
+                    </Typography>
+                  )}
+                </Box>
               </Box>
             )}
           </Box>
