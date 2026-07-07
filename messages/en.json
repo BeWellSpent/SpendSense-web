@@ -195,7 +195,8 @@
       },
       "markAsPaid": {
         "title": "Mark as Paid",
-        "alreadyPaid": "Already paid",
+        "alreadyPaid": "Already paid — click to unmark",
+        "unmark": "Unmark as paid",
         "description": "Confirm payment details for \"{name}\".",
         "amount": "Amount paid",
         "date": "Payment date",

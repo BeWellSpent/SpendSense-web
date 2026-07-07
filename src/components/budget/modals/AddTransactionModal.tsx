@@ -106,12 +106,10 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
   function resetForm() {
     setName('')
     setAmount('')
-    setDate(todayString())
-    setDayOfMonth(todayDay())
     setCategoryId(0)
     setPaymentMethodId('')
-    setTypeId(defaultTypeId)
-    setRecurring(false)
+    // Intentionally keep typeId, date, and dayOfMonth so the next transaction
+    // defaults to the same type and date the user just used.
   }
 
   async function handleSave() {

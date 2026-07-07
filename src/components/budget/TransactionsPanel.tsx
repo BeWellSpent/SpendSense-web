@@ -140,12 +140,28 @@ function TransactionTable({
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [markPaidTarget, setMarkPaidTarget] = useState<Transaction | null>(null)
 
+  const queryClient = useQueryClient()
+
   const { mutateAsync: doDeleteTx } = useMutation({
     mutationFn: (id: string) => client.deleteTransaction({ id }),
   })
   const { mutateAsync: doDeleteFixed } = useMutation({
     mutationFn: (id: string) => client.deleteFixedExpense({ id, budgetProfileId }),
   })
+  const { mutateAsync: doUnmark, isPending: unmarkPending } = useMutation({
+    mutationFn: (tx: Transaction) => client.unmarkTransactionAsPaid({ id: tx.id, budgetPeriodId }),
+  })
+
+  async function handleUnmark(tx: Transaction) {
+    try {
+      await doUnmark(tx)
+      logger.info('transaction.unmarkAsPaid', { id: tx.id })
+      queryClient.invalidateQueries({ queryKey: ['transactions', budgetPeriodId] })
+      onRefresh()
+    } catch (err) {
+      showError(err)
+    }
+  }
 
   async function handleDelete(tx: Transaction) {
     try {
@@ -262,7 +278,7 @@ function TransactionTable({
                           )}
                           {isFixed && tx.isPaid && (
                             <Tooltip title={t('markAsPaid.alreadyPaid')}>
-                              <IconButton size="small" disabled>
+                              <IconButton size="small" onClick={() => handleUnmark(tx)} disabled={unmarkPending} color="success">
                                 <CheckCircleIcon fontSize="small" color="success" />
                               </IconButton>
                             </Tooltip>

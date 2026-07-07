@@ -195,7 +195,8 @@
       },
       "markAsPaid": {
         "title": "Marcar como pagado",
-        "alreadyPaid": "Ya pagado",
+        "alreadyPaid": "Ya pagado — clic para desmarcar",
+        "unmark": "Desmarcar como pagado",
         "description": "Confirma los detalles de pago de \"{name}\".",
         "amount": "Monto pagado",
         "date": "Fecha de pago",

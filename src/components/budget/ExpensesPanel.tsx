@@ -333,7 +333,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
   }
   const savingsTotal = [...savingsByPerson.values()].reduce((a, b) => a + b, 0)
 
-  // chart data — Savings category uses savings sources as planned amounts
+  // chart data — Savings uses savings sources; fixed-only categories fall back to fixedPlannedByCat
   const chartData = (() => {
     if (chartGrouping === 'category') {
       return visibleCats.map((cat, i) => {
@@ -345,6 +345,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
             const alloc = allocMap.get(`${cat.id}:${p.id}`)
             if (alloc) value += parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
           }
+          if (value === 0) value = fixedPlannedByCat.get(cat.id) ?? 0
         }
         return { name: cat.name, value, color: cat.color || CHART_COLORS[i % CHART_COLORS.length] }
       }).filter((d) => d.value > 0)
@@ -356,7 +357,11 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
           value += savingsByPerson.get(p.id.toString()) ?? 0
         } else {
           const alloc = allocMap.get(`${cat.id}:${p.id}`)
-          if (alloc) value += parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
+          if (alloc) {
+            value += parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
+          } else {
+            value += fixedPlannedByPersonCat.get(`${cat.id}:${p.id}`) ?? 0
+          }
         }
       }
       return { name: p.userName, value, color: p.color || CHART_COLORS[i % CHART_COLORS.length] }
@@ -501,6 +506,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           {visibleCats.map((cat) => {
             const isSavings = savingsCat?.id === cat.id
+            const isFixedOnly = !isSavings && !catIdsWithAllocs.has(cat.id) && fixedPlannedByCat.has(cat.id)
             const actual = txnActualByCat.get(cat.id) ?? 0
             let plannedTotal = 0
             if (isSavings) {
@@ -540,7 +546,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                         {actual > 0 ? formatMoney(actual) : '—'}
                       </Typography>
                     </Box>
-                    {!isSavings && (
+                    {!isSavings && !isFixedOnly && (
                       <IconButton size="small" onClick={() => handleRemoveCategory(cat.id)}>
                         <DeleteOutlineIcon sx={{ fontSize: 16 }} />
                       </IconButton>
@@ -588,7 +594,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                             >
                               {personActual > 0 ? formatMoney(personActual) : '—'}
                             </Typography>
-                            {!isSavings && (
+                            {!isSavings && !isFixedOnly && (
                               <IconButton size="small" onClick={() => openEditDialog(cat, p.id, p.userName, val, alloc)}>
                                 <EditIcon sx={{ fontSize: 15 }} />
                               </IconButton>
@@ -632,6 +638,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
             <TableBody>
               {visibleCats.map((cat) => {
                 const isSavings = savingsCat?.id === cat.id
+                const isFixedOnly = !isSavings && !catIdsWithAllocs.has(cat.id) && fixedPlannedByCat.has(cat.id)
                 const actual = txnActualByCat.get(cat.id) ?? 0
                 let plannedTotal = 0
                 if (isSavings) {
@@ -676,7 +683,11 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                         : undefined
                       return (
                         <TableCell key={p.id.toString()} align="right">
-                          {alloc ? (
+                          {isFixedOnly ? (
+                            fixedPersonAmt != null
+                              ? <Typography variant="body2" color="text.secondary">{formatMoney(fixedPersonAmt)}</Typography>
+                              : <Typography component="span" variant="body2" color="text.disabled">—</Typography>
+                          ) : alloc ? (
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
                               <EditCell value={val} onSave={(amount) => handleUpsert(cat.id, p.id, amount, alloc)} />
                               <IconButton size="small" onClick={() => handleUpsert(cat.id, p.id, null, alloc)}>
@@ -704,7 +715,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                         : <Typography component="span" variant="body2" color="text.disabled">—</Typography>}
                     </TableCell>
                     <TableCell align="right">
-                      {!isSavings && (
+                      {!isSavings && !isFixedOnly && (
                         <Tooltip title={t('removeRow')} placement="left">
                           <IconButton
                             size="small"
