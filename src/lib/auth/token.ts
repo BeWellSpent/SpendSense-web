@@ -7,21 +7,26 @@ const BASE_OPTIONS = {
   path: '/',
 }
 
-// Matches the backend's default (non-remember-me) JWT lifetime — 24h.
-// Previously this had no maxAge at all ("expires when the browser closes"),
-// but mobile browsers evict those session-only cookies on backgrounding far
-// more readily than desktop ever closes its browser process, so the cookie
-// vanished long before the JWT actually expired. Giving it an explicit
-// maxAge means it survives exactly as long as the token it carries.
-export const SESSION_COOKIE_OPTIONS = {
-  ...BASE_OPTIONS,
-  maxAge: 60 * 60 * 24,
-}
+// Fallback used only if the caller can't tell us the token's real lifetime.
+// Matches the backend's default (non-remember-me) JWT lifetime.
+const DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 24
 
-// Persists for 90 days when "Remember me" is checked — matches JWT lifetime
-export const PERSISTENT_COOKIE_OPTIONS = {
-  ...BASE_OPTIONS,
-  maxAge: 60 * 60 * 24 * 90,
+// The cookie's maxAge must always match the actual JWT lifetime, not a
+// guess. Login, Register, and Google OAuth exchange each hand back their
+// own `expires_in` — Register and Google OAuth issue shorter-lived tokens
+// than Login's 24h/90d, so hardcoding maxAge by flow (or by a rememberMe
+// flag) previously left the cookie outliving the token: mobile browsers
+// backgrounding/foregrounding the app (see AuthContext's visibilitychange
+// check) would find a still-present cookie wrapping an already-expired
+// JWT, and every API call would 401 until the interceptor forced a login
+// redirect — reading as "the session expired" long before the cookie's
+// own deadline.
+export function authCookieOptions(expiresInSeconds?: number) {
+  const maxAge =
+    expiresInSeconds && Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
+      ? Math.floor(expiresInSeconds)
+      : DEFAULT_MAX_AGE_SECONDS
+  return { ...BASE_OPTIONS, maxAge }
 }
 
 // base64url → standard base64, padded to a multiple of 4. Browser atob()

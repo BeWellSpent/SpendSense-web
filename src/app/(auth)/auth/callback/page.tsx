@@ -45,7 +45,7 @@ function CallbackContent() {
         await fetch('/api/auth/set-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: res.accessToken }),
+          body: JSON.stringify({ token: res.accessToken, expiresIn: Number(res.expiresIn) }),
         })
         const userLocale = res.language || language
         const userCurrency = res.currency || currency

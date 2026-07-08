@@ -72,7 +72,7 @@ export function LoginForm() {
       await fetch('/api/auth/set-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: res.accessToken, rememberMe }),
+        body: JSON.stringify({ token: res.accessToken, expiresIn: Number(res.expiresIn) }),
       })
       // Store locale/currency for use throughout the app
       const userLocale = res.language || language

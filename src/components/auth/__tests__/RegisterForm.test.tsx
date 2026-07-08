@@ -84,14 +84,14 @@ describe('RegisterForm', () => {
     })
   })
 
-  it('sends the access token to the set-token API route', async () => {
-    mockRegister.mockResolvedValueOnce({ accessToken: 'newtoken' })
+  it('sends the access token and its real expiry to the set-token API route', async () => {
+    mockRegister.mockResolvedValueOnce({ accessToken: 'newtoken', expiresIn: 3600 })
     render(<RegisterForm />)
     await fillAndSubmit()
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith('/api/auth/set-token', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ token: 'newtoken' }),
+        body: JSON.stringify({ token: 'newtoken', expiresIn: 3600 }),
       }))
     })
   })

@@ -64,8 +64,8 @@ describe('LoginForm', () => {
     })
   })
 
-  it('sends the access token to the set-token API route', async () => {
-    mockLogin.mockResolvedValueOnce({ accessToken: 'abc123' })
+  it('sends the access token and its real expiry to the set-token API route', async () => {
+    mockLogin.mockResolvedValueOnce({ accessToken: 'abc123', expiresIn: 86400 })
     render(<LoginForm />)
     await userEvent.type(screen.getByLabelText(/email/i), 'user@example.com')
     await userEvent.type(screen.getByLabelText(/password/i), 'secret123')
@@ -73,7 +73,7 @@ describe('LoginForm', () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith('/api/auth/set-token', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ token: 'abc123', rememberMe: false }),
+        body: JSON.stringify({ token: 'abc123', expiresIn: 86400 }),
       }))
     })
   })
