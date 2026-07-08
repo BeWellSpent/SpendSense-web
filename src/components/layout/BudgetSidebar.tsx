@@ -316,7 +316,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
           </AppBar>
         )}
 
-        <Box sx={{ flex: 1, pb: isMobile ? 7 : 0 }}>
+        <Box sx={{ flex: 1 }}>
           {children}
         </Box>
       </Box>
