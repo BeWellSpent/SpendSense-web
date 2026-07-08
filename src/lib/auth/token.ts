@@ -1,9 +1,17 @@
 export const TOKEN_COOKIE = 'spendsense_token'
 
+// SameSite=Strict excludes the cookie not just on cross-site requests but on
+// some top-level navigations mobile browsers treat as "externally initiated"
+// even to the same site — pull-to-refresh, reopening from recents, PWA-style
+// relaunches. That reads as an instant, cookie-missing redirect to login on
+// refresh, even though the cookie was set correctly moments earlier. Lax is
+// the standard choice for auth session cookies for exactly this reason: it
+// still blocks the cross-site state-changing (POST/PUT/DELETE) requests
+// Strict exists for, but survives normal top-level GET navigation.
 const BASE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  sameSite: 'lax' as const,
   path: '/',
 }
 
