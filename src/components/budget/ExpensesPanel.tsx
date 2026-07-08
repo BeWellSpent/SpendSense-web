@@ -407,7 +407,28 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
   const totalCommitted = plannedExpenseTotal + fixedExpenseTotal
   const remainder = incomeTotal - totalCommitted
 
-  const totalActualSpent = [...txnActualByCat.values()].reduce((a, b) => a + b, 0)
+  // "Spent" counts unplanned actual spend in full (nothing to compare it
+  // against), and for planned categories only the amount that exceeds the
+  // plan — not the full actual — and only once the plan is actually exceeded.
+  let totalActualSpent = 0
+  for (const cat of visibleCats) {
+    let planned = 0
+    if (savingsCat && cat.id === savingsCat.id) {
+      planned = savingsTotal
+    } else {
+      for (const p of people) {
+        const alloc = allocMap.get(`${cat.id}:${p.id}`)
+        if (alloc) planned += parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
+      }
+      if (planned === 0) planned = fixedPlannedByCat.get(cat.id) ?? 0
+    }
+    const actual = txnActualByCat.get(cat.id) ?? 0
+    if (planned <= 0) {
+      totalActualSpent += actual
+    } else if (actual > planned) {
+      totalActualSpent += actual - planned
+    }
+  }
 
   const footerCellSx = { borderTop: '2px solid', borderColor: 'divider', fontSize: '0.95rem', fontWeight: 700 }
 
