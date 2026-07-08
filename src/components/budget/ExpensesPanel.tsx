@@ -71,6 +71,15 @@ function actualColor(actual: number, plannedTotal: number): string | undefined {
   return 'success.main'
 }
 
+function spentColor(spent: number, planned: number): string {
+  if (planned <= 0) return 'success.main'
+  const pct = (spent / planned) * 100
+  if (pct >= 90) return 'error.main'
+  if (pct >= 75) return '#f59e0b'
+  if (pct >= 50) return '#eab308'
+  return 'success.main'
+}
+
 // Savings rows use inverted thresholds: more saved = greener
 function savingsActualColor(actual: number, plannedTotal: number): string | undefined {
   if (plannedTotal <= 0) return undefined
@@ -397,7 +406,8 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
   // savings are now part of plannedExpenseTotal (shown as the Savings category row)
   const totalCommitted = plannedExpenseTotal + fixedExpenseTotal
   const remainder = incomeTotal - totalCommitted
-  const actualTotal = [...txnActualByCat.values()].reduce((a, b) => a + b, 0)
+
+  const totalActualSpent = [...txnActualByCat.values()].reduce((a, b) => a + b, 0)
 
   const footerCellSx = { borderTop: '2px solid', borderColor: 'divider', fontSize: '0.95rem', fontWeight: 700 }
 
@@ -818,17 +828,14 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId }: Props) {
                 {formatMoney(remainder)}
               </Typography>
             </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="text.secondary">{t('actual')}</Typography>
-              <Typography
-                variant="body2"
-                fontWeight={700}
-                sx={{ ml: 2, whiteSpace: 'nowrap' }}
-                color={actualColor(actualTotal, totalCommitted)}
-              >
-                {formatMoney(actualTotal)}
-              </Typography>
-            </Box>
+            {totalActualSpent > 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="body2" color="text.secondary">{t('spent')}</Typography>
+                <Typography variant="body2" fontWeight={700} sx={{ ml: 2, whiteSpace: 'nowrap', color: spentColor(totalActualSpent, totalCommitted) }}>
+                  {formatMoney(totalActualSpent)}
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Box>
       )}

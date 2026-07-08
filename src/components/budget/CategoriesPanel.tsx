@@ -7,7 +7,6 @@ import type { Category } from '@/gen/spendsense/v1/budget_pb'
 import { useClient } from '@/hooks/useClient'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { ColorPicker } from '@/components/ui/ColorPicker'
-import { COLORS, COLOR_NAMES } from '@/lib/config/colors'
 import { logger } from '@/lib/logger'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -35,8 +34,21 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import PaletteIcon from '@mui/icons-material/Palette'
 import ShuffleIcon from '@mui/icons-material/Shuffle'
 
-function randomColor() {
-  return COLORS[COLOR_NAMES[Math.floor(Math.random() * COLOR_NAMES.length)]]
+function hslToHex(h: number, s: number, l: number): string {
+  const a = s * Math.min(l, 1 - l)
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12
+    const c = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
+    return Math.round(255 * c).toString(16).padStart(2, '0')
+  }
+  return `#${f(0)}${f(8)}${f(4)}`
+}
+
+function generateDistinctColors(count: number): string[] {
+  const startHue = Math.random() * 360
+  return Array.from({ length: count }, (_, i) =>
+    hslToHex((startHue + i * 137.508) % 360, 0.65, 0.50)
+  )
 }
 
 function ColorDot({ color }: { color: string }) {
@@ -73,6 +85,7 @@ export function CategoriesPanel() {
 
   const [deletingCat, setDeletingCat] = useState<Category | null>(null)
   const [replacementId, setReplacementId] = useState<number>(0)
+  const [isRandomizing, setIsRandomizing] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['categories'],
@@ -142,6 +155,19 @@ export function CategoriesPanel() {
     }
   }
 
+  async function handleRandomizeSystemColors() {
+    setIsRandomizing(true)
+    try {
+      const picks = generateDistinctColors(systemCats.length)
+      await Promise.all(systemCats.map((cat, i) => doUpdate({ id: cat.id, name: cat.name, color: picks[i] })))
+      logger.info('category.randomize_colors', { count: systemCats.length })
+    } catch (err) {
+      showError(err)
+    } finally {
+      setIsRandomizing(false)
+    }
+  }
+
   function openDelete(cat: Category) {
     setDeletingCat(cat)
     setReplacementId(0)
@@ -168,7 +194,16 @@ export function CategoriesPanel() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* System categories */}
       <Box>
-        <Typography variant="subtitle1" fontWeight={600} mb={1}>System categories</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="subtitle1" fontWeight={600}>System categories</Typography>
+          <Tooltip title="Assign random colors to all">
+            <span>
+              <IconButton size="small" onClick={handleRandomizeSystemColors} disabled={isRandomizing || systemCats.length === 0}>
+                <ShuffleIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
         {isLoading ? (
           <CircularProgress size={20} />
         ) : systemCats.length === 0 ? (
@@ -247,14 +282,7 @@ export function CategoriesPanel() {
             <Typography variant="caption" color="text.secondary" display="block" mb={1}>
               Color (optional)
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ColorPicker value={newColor} onChange={setNewColor} />
-              <Tooltip title="Random color">
-                <IconButton size="small" onClick={() => setNewColor(randomColor())}>
-                  <ShuffleIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
+            <ColorPicker value={newColor} onChange={setNewColor} />
           </Box>
           <Button
             variant="contained"
@@ -274,14 +302,7 @@ export function CategoriesPanel() {
             <Typography variant="caption" color="text.secondary" display="block" mb={1}>
               Color (optional)
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ColorPicker value={systemEditColor} onChange={setSystemEditColor} />
-              <Tooltip title="Random color">
-                <IconButton size="small" onClick={() => setSystemEditColor(randomColor())}>
-                  <ShuffleIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
+            <ColorPicker value={systemEditColor} onChange={setSystemEditColor} />
           </Box>
         </DialogContent>
         <DialogActions>
@@ -308,14 +329,7 @@ export function CategoriesPanel() {
               <Typography variant="caption" color="text.secondary" display="block" mb={1}>
                 Color (optional)
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <ColorPicker value={editColor} onChange={setEditColor} />
-                <Tooltip title="Random color">
-                  <IconButton size="small" onClick={() => setEditColor(randomColor())}>
-                    <ShuffleIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Box>
+              <ColorPicker value={editColor} onChange={setEditColor} />
             </Box>
           </Box>
         </DialogContent>

@@ -225,6 +225,7 @@
       "planSummary": "Plan Summary",
       "plannedAllocations": "Planned allocations + Fixed expenses",
       "remainder": "Remainder",
+      "spent": "Spent",
       "chart": {
         "pie": "Pie",
         "bar": "Bar",

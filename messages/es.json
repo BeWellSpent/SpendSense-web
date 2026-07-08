@@ -225,6 +225,7 @@
       "planSummary": "Resumen del Plan",
       "plannedAllocations": "Asignaciones planificadas + Gastos fijos",
       "remainder": "Saldo restante",
+      "spent": "Gastado",
       "chart": {
         "pie": "Pastel",
         "bar": "Barras",
