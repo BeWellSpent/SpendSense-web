@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import type { BudgetPerson, PaymentMethod } from '@/gen/spendsense/v1/budget_pb'
+import { BudgetRole } from '@/gen/spendsense/v1/common_pb'
 import { useClient } from '@/hooks/useClient'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { ColorPicker } from '@/components/ui/ColorPicker'
@@ -36,8 +38,21 @@ interface Props {
   budgetProfileId: string
 }
 
+function useRoleLabel() {
+  const t = useTranslations('budget.invites.roles')
+  return (role: BudgetRole) => {
+    switch (role) {
+      case BudgetRole.ADMIN: return t('admin')
+      case BudgetRole.COLLABORATOR: return t('collaborator')
+      case BudgetRole.VIEWER: return t('viewer')
+      default: return t('unspecified')
+    }
+  }
+}
+
 export function PeoplePanel({ budgetProfileId }: Props) {
   const { showError, showSuccess } = useSnackbar()
+  const roleLabel = useRoleLabel()
   const client = useClient(BudgetService)
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
@@ -210,17 +225,20 @@ export function PeoplePanel({ budgetProfileId }: Props) {
                 >
                   <ListItemText
                     primary={
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                         {p.color && (
                           <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: p.color, flexShrink: 0 }} />
                         )}
                         <span>{p.userName}</span>
-                        {isOwner && (
-                          <Chip label="Owner" size="small" color="primary" variant="outlined" />
-                        )}
+                        <Chip
+                          label={roleLabel(p.role)}
+                          size="small"
+                          color={isOwner ? 'primary' : 'default'}
+                          variant="outlined"
+                        />
                       </Stack>
                     }
-                    secondary={p.userId ? 'Registered user' : 'Guest'}
+                    secondary={p.userId ? undefined : 'Pending invite'}
                   />
                 </ListItem>
               )

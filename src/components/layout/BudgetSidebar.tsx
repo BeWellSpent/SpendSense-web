@@ -10,6 +10,7 @@ import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import { useClient } from '@/hooks/useClient'
 import { FullScreenDrawer } from '@/components/ui/FullScreenDrawer'
 import { PeoplePanel } from '@/components/budget/PeoplePanel'
+import { InvitePanel } from '@/components/budget/InvitePanel'
 import { CategoriesPanel } from '@/components/budget/CategoriesPanel'
 import { IncomePanel } from '@/components/budget/IncomePanel'
 import { SavingsPanel } from '@/components/budget/SavingsPanel'
@@ -29,6 +30,7 @@ import IconButton from '@mui/material/IconButton'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import PeopleIcon from '@mui/icons-material/People'
+import MailIcon from '@mui/icons-material/Mail'
 import CategoryIcon from '@mui/icons-material/Category'
 import BarChartIcon from '@mui/icons-material/BarChart'
 import SettingsIcon from '@mui/icons-material/Settings'
@@ -66,6 +68,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const client = useClient(BudgetService)
   const [peopleOpen, setPeopleOpen] = useState(false)
+  const [invitesOpen, setInvitesOpen] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [incomeOpen, setIncomeOpen] = useState(false)
   const [savingsOpen, setSavingsOpen] = useState(false)
@@ -127,6 +130,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
     { label: t('paymentMethods'), icon: <CreditCardIcon />, action: () => setPaymentMethodsOpen(true) },
     { label: t('categories'), icon: <CategoryIcon />, action: () => setCategoriesOpen(true) },
     { label: t('people'), icon: <PeopleIcon />, action: () => setPeopleOpen(true) },
+    { label: t('invitations'), icon: <MailIcon />, action: () => setInvitesOpen(true) },
   ]
 
   const appItems: NavItem[] = [
@@ -386,6 +390,10 @@ export function BudgetSidebar({ budgetId, children }: Props) {
 
       <FullScreenDrawer open={peopleOpen} onClose={() => setPeopleOpen(false)} title={t('people')}>
         <PeoplePanel budgetProfileId={budgetId} />
+      </FullScreenDrawer>
+
+      <FullScreenDrawer open={invitesOpen} onClose={() => setInvitesOpen(false)} title={t('invitations')}>
+        <InvitePanel budgetProfileId={budgetId} />
       </FullScreenDrawer>
 
       <FullScreenDrawer open={incomeOpen} onClose={() => setIncomeOpen(false)} title={t('income')}>

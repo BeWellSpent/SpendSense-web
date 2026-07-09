@@ -83,6 +83,7 @@
       "paymentMethods": "Payment Methods",
       "categories": "Categories",
       "people": "People",
+      "invitations": "Invitations",
       "reports": "Reports",
       "reportsSoon": "Coming soon",
       "settings": "Settings",
@@ -270,6 +271,55 @@
         "addIncome": "Add Income",
         "paymentMethods": "Payment Methods"
       }
+    },
+    "invites": {
+      "title": "Invitations",
+      "empty": "No invitations sent yet.",
+      "send": {
+        "title": "Send Invite",
+        "email": "Email address",
+        "role": "Role",
+        "linkPerson": "Link to existing guest (optional)",
+        "noPerson": "— Create new person on acceptance —",
+        "submit": "Send",
+        "submitting": "Sending…",
+        "success": "Invite sent to {email}"
+      },
+      "list": {
+        "status": {
+          "pending": "Pending",
+          "accepted": "Accepted",
+          "cancelled": "Cancelled",
+          "expired": "Expired"
+        },
+        "cancel": "Cancel",
+        "cancelling": "Cancelling…"
+      },
+      "roles": {
+        "admin": "Admin",
+        "collaborator": "Collaborator",
+        "viewer": "Viewer",
+        "unspecified": "Guest"
+      }
+    }
+  },
+  "invite": {
+    "loading": "Loading invite…",
+    "title": "{inviterName} invited you to join {budgetName}",
+    "role": "Your role: {role}",
+    "expires": "Expires {date}",
+    "accept": "Accept Invite",
+    "accepting": "Accepting…",
+    "success": "Invite accepted! Redirecting to your budget…",
+    "signIn": "Sign in to accept",
+    "register": "Create account",
+    "alreadyHaveAccount": "Already have an account?",
+    "noAccount": "Don't have an account yet?",
+    "error": {
+      "cancelled": "This invite has been cancelled.",
+      "accepted": "This invite has already been accepted.",
+      "expired": "This invite has expired.",
+      "notFound": "Invite not found or invalid."
     }
   }
 }

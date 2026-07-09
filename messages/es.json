@@ -83,6 +83,7 @@
       "paymentMethods": "Métodos de Pago",
       "categories": "Categorías",
       "people": "Personas",
+      "invitations": "Invitaciones",
       "reports": "Reportes",
       "reportsSoon": "Próximamente",
       "settings": "Configuración",
@@ -270,6 +271,55 @@
         "addIncome": "Agregar Ingresos",
         "paymentMethods": "Métodos de Pago"
       }
+    },
+    "invites": {
+      "title": "Invitaciones",
+      "empty": "No se han enviado invitaciones aún.",
+      "send": {
+        "title": "Enviar Invitación",
+        "email": "Correo electrónico",
+        "role": "Rol",
+        "linkPerson": "Vincular a persona existente (opcional)",
+        "noPerson": "— Crear nueva persona al aceptar —",
+        "submit": "Enviar",
+        "submitting": "Enviando…",
+        "success": "Invitación enviada a {email}"
+      },
+      "list": {
+        "status": {
+          "pending": "Pendiente",
+          "accepted": "Aceptada",
+          "cancelled": "Cancelada",
+          "expired": "Vencida"
+        },
+        "cancel": "Cancelar",
+        "cancelling": "Cancelando…"
+      },
+      "roles": {
+        "admin": "Administrador",
+        "collaborator": "Colaborador",
+        "viewer": "Observador",
+        "unspecified": "Invitado"
+      }
+    }
+  },
+  "invite": {
+    "loading": "Cargando invitación…",
+    "title": "{inviterName} te invitó a unirte a {budgetName}",
+    "role": "Tu rol: {role}",
+    "expires": "Vence el {date}",
+    "accept": "Aceptar Invitación",
+    "accepting": "Aceptando…",
+    "success": "¡Invitación aceptada! Redirigiendo a tu presupuesto…",
+    "signIn": "Iniciar sesión para aceptar",
+    "register": "Crear cuenta",
+    "alreadyHaveAccount": "¿Ya tienes cuenta?",
+    "noAccount": "¿Aún no tienes cuenta?",
+    "error": {
+      "cancelled": "Esta invitación ha sido cancelada.",
+      "accepted": "Esta invitación ya fue aceptada.",
+      "expired": "Esta invitación ha vencido.",
+      "notFound": "Invitación no encontrada o inválida."
     }
   }
 }
