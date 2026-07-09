@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@connectrpc/connect'
 import { AuthService } from '@/gen/spendsense/v1/auth_connect'
 import { UserService } from '@/gen/spendsense/v1/user_connect'
@@ -68,6 +69,8 @@ export function RegisterForm() {
   const tCommon = useTranslations('auth')
   const locale = useLocale()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -141,7 +144,11 @@ export function RegisterForm() {
       localStorage.setItem('spendsense_locale', language)
       localStorage.setItem('spendsense_currency', currency)
       logger.info('auth.register')
-      router.push('/budgets', { locale: language })
+      if (redirect) {
+        window.location.href = redirect
+      } else {
+        router.push('/budgets', { locale: language })
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed'
       setError(message)

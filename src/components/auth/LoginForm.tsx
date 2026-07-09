@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@connectrpc/connect'
 import { AuthService } from '@/gen/spendsense/v1/auth_connect'
 import { publicTransport } from '@/lib/api/client'
@@ -35,6 +36,8 @@ export function LoginForm() {
   const tCommon = useTranslations('auth')
   const locale = useLocale()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
@@ -80,7 +83,11 @@ export function LoginForm() {
       localStorage.setItem('spendsense_locale', userLocale)
       localStorage.setItem('spendsense_currency', userCurrency)
       logger.info('auth.login')
-      router.push('/budgets', { locale: userLocale })
+      if (redirect) {
+        window.location.href = redirect
+      } else {
+        router.push('/budgets', { locale: userLocale })
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed'
       setError(message)
