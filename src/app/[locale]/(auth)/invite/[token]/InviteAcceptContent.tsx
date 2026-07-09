@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import { createClient } from '@connectrpc/connect'
+import { createClient, ConnectError, Code } from '@connectrpc/connect'
 import { InviteService } from '@/gen/spendsense/v1/invite_connect'
 import { InviteStatus } from '@/gen/spendsense/v1/invite_pb'
 import { BudgetRole } from '@/gen/spendsense/v1/common_pb'
@@ -111,6 +111,13 @@ export function InviteAcceptContent({ inviteToken, locale, isLoggedIn, authToken
         window.location.href = `/${locale}/budgets/${res.budgetProfileId}`
       }, 1200)
     } catch (err) {
+      // If the account no longer exists the JWT is stale — clear it and reload
+      // so the page falls back to the sign-in / register flow.
+      if (err instanceof ConnectError && err.code === Code.NotFound) {
+        await fetch('/api/auth/logout', { method: 'POST' })
+        window.location.reload()
+        return
+      }
       const msg = err instanceof Error ? err.message : 'Failed to accept invite'
       setAcceptError(msg)
       logger.error('invite.accept.failed', { error: msg })
