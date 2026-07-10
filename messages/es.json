@@ -212,7 +212,10 @@
       },
       "empty": "No hay transacciones {label} aún.",
       "subtotal": "Subtotal {label}",
-      "notDueTooltip": "No vence este período — próximo vencimiento {date}"
+      "notDueTooltip": "No vence este período — próximo vencimiento {date}",
+      "sortBy": "Ordenar por",
+      "searchPlaceholder": "Buscar por nombre, categoría o titular…",
+      "clearSearch": "Borrar búsqueda"
     },
     "expenses": {
       "title": "Plan de Gastos",
