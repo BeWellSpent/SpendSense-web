@@ -33,7 +33,7 @@ function moneyToString(units: bigint, nanos: number): string {
   return (Number(units) + nanos / 1e9).toFixed(2)
 }
 
-function intervalLabel(t: (key: string, values?: Record<string, unknown>) => string, n: number): string {
+function intervalLabel(t: (key: string, values?: Record<string, string | number | Date>) => string, n: number): string {
   if (n === 1) return t('fields.intervalMonthly')
   if (n === 12) return t('fields.intervalYearly')
   return t('fields.intervalEvery', { n })
