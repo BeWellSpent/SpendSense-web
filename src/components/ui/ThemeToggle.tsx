@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import LightModeIcon from '@mui/icons-material/LightMode'
@@ -17,11 +18,24 @@ const LABEL: Record<Mode, string> = {
 }
 
 export function ThemeToggle() {
+  const [mounted, setMounted] = useState(false)
   const { mode, setMode } = useThemeMode()
+
+  useEffect(() => setMounted(true), [])
+
+  // Before mount, mode is undefined — render a stable placeholder that matches SSR.
+  if (!mounted) {
+    return (
+      <IconButton size="small" aria-label="Theme">
+        <BrightnessAutoIcon fontSize="small" />
+      </IconButton>
+    )
+  }
+
   const Icon = mode === 'light' ? LightModeIcon : mode === 'dark' ? DarkModeIcon : BrightnessAutoIcon
   return (
     <Tooltip title={LABEL[mode]}>
-      <IconButton size="small" onClick={() => setMode(CYCLE[mode])}>
+      <IconButton size="small" aria-label={LABEL[mode]} onClick={() => setMode(CYCLE[mode])}>
         <Icon fontSize="small" />
       </IconButton>
     </Tooltip>

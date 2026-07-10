@@ -1,34 +1,32 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useServerInsertedHTML } from 'next/navigation'
 import { CacheProvider } from '@emotion/react'
 import createCache from '@emotion/cache'
-import { ThemeProvider, createTheme } from '@mui/material/styles'
+import {
+  Experimental_CssVarsProvider as CssVarsProvider,
+  experimental_extendTheme as extendTheme,
+} from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
-import { ThemeContextProvider, useThemeMode } from '@/context/ThemeContext'
 
-function ThemedApp({ children }: { children: React.ReactNode }) {
-  const { effective } = useThemeMode()
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode: effective,
-          primary: { main: '#1565c0' },
-          secondary: { main: '#2e7d32' },
-        },
-        shape: { borderRadius: 8 },
-      }),
-    [effective]
-  )
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      {children}
-    </ThemeProvider>
-  )
-}
+const theme = extendTheme({
+  colorSchemes: {
+    light: {
+      palette: {
+        primary: { main: '#1565c0' },
+        secondary: { main: '#2e7d32' },
+      },
+    },
+    dark: {
+      palette: {
+        primary: { main: '#1565c0' },
+        secondary: { main: '#2e7d32' },
+      },
+    },
+  },
+  shape: { borderRadius: 8 },
+})
 
 export function ThemeRegistry({ children }: { children: React.ReactNode }) {
   const [{ cache, flush }] = useState(() => {
@@ -69,9 +67,11 @@ export function ThemeRegistry({ children }: { children: React.ReactNode }) {
 
   return (
     <CacheProvider value={cache}>
-      <ThemeContextProvider>
-        <ThemedApp>{children}</ThemedApp>
-      </ThemeContextProvider>
+      {/* modeStorageKey matches the key our ThemeToggle already writes, preserving user preference */}
+      <CssVarsProvider theme={theme} defaultMode="system" modeStorageKey="theme-mode">
+        <CssBaseline />
+        {children}
+      </CssVarsProvider>
     </CacheProvider>
   )
 }

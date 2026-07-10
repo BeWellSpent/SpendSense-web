@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useTheme } from '@mui/material/styles'
+import { useThemeMode } from '@/context/ThemeContext'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
 import { BudgetRole } from '@/gen/spendsense/v1/common_pb'
@@ -78,9 +79,12 @@ export function BudgetSidebar({ budgetId, children }: Props) {
   const [paymentMethodsOpen, setPaymentMethodsOpen] = useState(false)
   const [mobileManageOpen, setMobileManageOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [themeMounted, setThemeMounted] = useState(false)
+  const { effective } = useThemeMode()
 
   useEffect(() => {
     setCollapsed(localStorage.getItem(COLLAPSED_KEY) === 'true')
+    setThemeMounted(true)
   }, [])
 
   function toggleCollapsed() {
@@ -176,7 +180,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
         {!collapsed && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }}>
             <Image
-              src={theme.palette.mode === 'dark' ? '/app-icon-dark.png' : '/app-icon-light.png'}
+              src={themeMounted && effective === 'dark' ? '/app-icon-dark.png' : '/app-icon-light.png'}
               alt="WellSpent"
               width={32}
               height={32}
@@ -324,7 +328,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
               </IconButton>
               <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                 <Image
-                  src={theme.palette.mode === 'dark' ? '/app-icon-dark.png' : '/app-icon-light.png'}
+                  src={themeMounted && effective === 'dark' ? '/app-icon-dark.png' : '/app-icon-light.png'}
                   alt="WellSpent"
                   width={32}
                   height={32}
@@ -353,7 +357,7 @@ export function BudgetSidebar({ budgetId, children }: Props) {
         <Box sx={{ width: 260, pt: 1 }}>
           <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
             <Image
-              src={theme.palette.mode === 'dark' ? '/app-icon-dark.png' : '/app-icon-light.png'}
+              src={themeMounted && effective === 'dark' ? '/app-icon-dark.png' : '/app-icon-light.png'}
               alt="WellSpent"
               width={24}
               height={24}
