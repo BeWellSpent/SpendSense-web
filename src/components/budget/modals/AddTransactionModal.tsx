@@ -64,6 +64,8 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
   const [date, setDate] = useState(todayString)
   const [dayOfMonth, setDayOfMonth] = useState(todayDay)
   const [intervalMonths, setIntervalMonths] = useState(1)
+  const [isFutureStart, setIsFutureStart] = useState(false)
+  const [anchorDateStr, setAnchorDateStr] = useState(todayString)
   const [categoryId, setCategoryId] = useState<number>(0)
   const [paymentMethodId, setPaymentMethodId] = useState('')
   const [typeId, setTypeId] = useState<number>(defaultTypeId)
@@ -105,12 +107,13 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
       paymentMethodId: string
       dayOfMonth: number
       intervalMonths: number
+      anchorDate?: { seconds: bigint; nanos: number }
     }) => client.createFixedExpense({ budgetProfileId, ...vars }),
   })
 
   const isPending = txPending || fixedPending
 
-  const isDateValid = isFixed ? dayOfMonth >= 1 && dayOfMonth <= 31 : !!date
+  const isDateValid = isFixed ? (isFutureStart ? !!anchorDateStr : dayOfMonth >= 1 && dayOfMonth <= 31) : !!date
   const canSave = !!name.trim() && !!amount && isDateValid && (isFixed || !!paymentMethodId)
 
   function resetForm() {
@@ -118,6 +121,7 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
     setAmount('')
     setCategoryId(0)
     setPaymentMethodId('')
+    setIsFutureStart(false)
     // Intentionally keep typeId, date, and dayOfMonth so the next transaction
     // defaults to the same type and date the user just used.
   }
@@ -128,7 +132,15 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
     const nanos = Math.round((parseFloat(amount) - Number(units)) * 1e9)
     try {
       if (isFixed) {
-        await createFixed({ name, plannedAmount: { units, nanos }, categoryId, paymentMethodId, dayOfMonth, intervalMonths })
+        await createFixed({
+          name,
+          plannedAmount: { units, nanos },
+          categoryId,
+          paymentMethodId,
+          dayOfMonth,
+          intervalMonths,
+          ...(isFutureStart ? { anchorDate: dateStringToTimestamp(anchorDateStr) } : {}),
+        })
         logger.info('fixedExpense.create', { budgetProfileId, name, amount })
         queryClient.invalidateQueries({ queryKey: ['transactions', budgetPeriodId, 1] })
         queryClient.invalidateQueries({ queryKey: ['fixed-expenses', budgetProfileId] })
@@ -174,14 +186,31 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
       </TextField>
       {isFixed ? (
         <>
-          <TextField
-            label="Day of month"
-            type="number"
-            value={dayOfMonth}
-            onChange={(e) => setDayOfMonth(Math.min(31, Math.max(1, Number(e.target.value))))}
-            fullWidth
-            inputProps={{ min: 1, max: 31, inputMode: 'decimal' }}
-            helperText="Which day of the month this expense falls on"
+          {isFutureStart ? (
+            <TextField
+              label="Start date"
+              type="date"
+              value={anchorDateStr}
+              onChange={(e) => setAnchorDateStr(e.target.value)}
+              fullWidth
+              required
+              InputLabelProps={{ shrink: true }}
+              helperText="First date this expense is due — no transaction until then"
+            />
+          ) : (
+            <TextField
+              label="Day of month"
+              type="number"
+              value={dayOfMonth}
+              onChange={(e) => setDayOfMonth(Math.min(31, Math.max(1, Number(e.target.value))))}
+              fullWidth
+              inputProps={{ min: 1, max: 31, inputMode: 'decimal' }}
+              helperText="Which day of the month this expense falls on"
+            />
+          )}
+          <FormControlLabel
+            control={<Checkbox checked={isFutureStart} onChange={(e) => setIsFutureStart(e.target.checked)} />}
+            label="This expense starts in the future"
           />
           <TextField
             select
