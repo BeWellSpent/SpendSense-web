@@ -212,7 +212,10 @@
       },
       "empty": "No {label} transactions yet.",
       "subtotal": "{label} subtotal",
-      "notDueTooltip": "Not due this period — next due {date}"
+      "notDueTooltip": "Not due this period — next due {date}",
+      "sortBy": "Sort by",
+      "searchPlaceholder": "Search by name, category, or owner…",
+      "clearSearch": "Clear search"
     },
     "expenses": {
       "title": "Expense Plan",

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
@@ -23,6 +23,9 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TableSortLabel from '@mui/material/TableSortLabel'
+import TextField from '@mui/material/TextField'
+import MenuItem from '@mui/material/MenuItem'
+import InputAdornment from '@mui/material/InputAdornment'
 import IconButton from '@mui/material/IconButton'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -37,6 +40,10 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import ViewStreamIcon from '@mui/icons-material/ViewStream'
 import TabIcon from '@mui/icons-material/Tab'
+import SearchIcon from '@mui/icons-material/Search'
+import ClearIcon from '@mui/icons-material/Clear'
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import type { ViewMode } from '@/hooks/useViewPreference'
 
 interface Props {
@@ -82,17 +89,58 @@ function nextDueDateLabel(fe: FixedExpense): string {
   })
 }
 
-type SortKey = 'name' | 'day' | 'amount'
+type SortKey = 'name' | 'day' | 'amount' | 'category' | 'paymentMethod' | 'owner'
 
 function resolveDay(t: Transaction): number {
   return Number(t.date?.seconds ?? 0n)
 }
 
-function compareTransactions(
+export function resolveCategoryName(categoryId: number, categoryMap: Map<number, Category>): string {
+  return categoryId ? (categoryMap.get(categoryId)?.name ?? '') : ''
+}
+
+export function resolveMethodName(paymentMethodId: string, methodMap: Map<string, PaymentMethod>): string {
+  return paymentMethodId ? (methodMap.get(paymentMethodId)?.name ?? '') : ''
+}
+
+export function resolveOwnerName(
+  paymentMethodId: string,
+  methodMap: Map<string, PaymentMethod>,
+  personMap: Map<string, BudgetPerson>,
+): string {
+  const method = paymentMethodId ? methodMap.get(paymentMethodId) : undefined
+  const person = method?.budgetPersonId && method.budgetPersonId !== 0n
+    ? personMap.get(method.budgetPersonId.toString())
+    : undefined
+  return person?.userName ?? ''
+}
+
+export function matchesSearch(
+  name: string,
+  categoryId: number,
+  paymentMethodId: string,
+  query: string,
+  categoryMap: Map<number, Category>,
+  methodMap: Map<string, PaymentMethod>,
+  personMap: Map<string, BudgetPerson>,
+): boolean {
+  if (!query) return true
+  const q = query.toLowerCase()
+  return (
+    name.toLowerCase().includes(q) ||
+    resolveCategoryName(categoryId, categoryMap).toLowerCase().includes(q) ||
+    resolveOwnerName(paymentMethodId, methodMap, personMap).toLowerCase().includes(q)
+  )
+}
+
+export function compareTransactions(
   a: Transaction,
   b: Transaction,
   key: SortKey,
   dir: 'asc' | 'desc',
+  categoryMap: Map<number, Category>,
+  methodMap: Map<string, PaymentMethod>,
+  personMap: Map<string, BudgetPerson>,
 ): number {
   const sign = dir === 'asc' ? 1 : -1
   let primary: number
@@ -100,6 +148,15 @@ function compareTransactions(
     case 'name': primary = a.name.localeCompare(b.name) * sign; break
     case 'day': primary = (resolveDay(a) - resolveDay(b)) * sign; break
     case 'amount': primary = (txPlannedAmount(a) - txPlannedAmount(b)) * sign; break
+    case 'category':
+      primary = resolveCategoryName(a.categoryId, categoryMap).localeCompare(resolveCategoryName(b.categoryId, categoryMap)) * sign
+      break
+    case 'paymentMethod':
+      primary = resolveMethodName(a.paymentMethodId, methodMap).localeCompare(resolveMethodName(b.paymentMethodId, methodMap)) * sign
+      break
+    case 'owner':
+      primary = resolveOwnerName(a.paymentMethodId, methodMap, personMap).localeCompare(resolveOwnerName(b.paymentMethodId, methodMap, personMap)) * sign
+      break
   }
   return primary !== 0 ? primary : a.id.localeCompare(b.id)
 }
@@ -140,6 +197,7 @@ interface TableProps {
   methodMap: Map<string, PaymentMethod>
   personMap: Map<string, BudgetPerson>
   notDueFixedExpenses?: FixedExpense[]
+  searchQuery?: string
   onDeleted: () => void
   onEdit: (t: Transaction) => void
   onEditFixedExpense?: (fe: FixedExpense) => void
@@ -148,7 +206,7 @@ interface TableProps {
 
 function TransactionTable({
   transactions, isLoading, isEditable, isFixed, savingsCategoryId, budgetPeriodId, budgetProfileId, label,
-  categoryMap, methodMap, personMap, notDueFixedExpenses = [], onDeleted, onEdit, onEditFixedExpense, onRefresh,
+  categoryMap, methodMap, personMap, notDueFixedExpenses = [], searchQuery = '', onDeleted, onEdit, onEditFixedExpense, onRefresh,
 }: TableProps) {
   const t = useTranslations('budget.transactions')
   const { showError } = useSnackbar()
@@ -225,7 +283,13 @@ function TransactionTable({
   const canMarkPaid = (tx: Transaction) =>
     isFixed && isEditable && !tx.isPaid
 
-  const sorted = [...transactions].sort((a, b) => compareTransactions(a, b, sortKey, sortDir))
+  const filteredTransactions = transactions.filter((tx) =>
+    matchesSearch(tx.name, tx.categoryId, tx.paymentMethodId, searchQuery, categoryMap, methodMap, personMap))
+  const filteredNotDue = notDueFixedExpenses.filter((fe) =>
+    matchesSearch(fe.name, fe.categoryId, fe.paymentMethodId, searchQuery, categoryMap, methodMap, personMap))
+
+  const sorted = [...filteredTransactions].sort((a, b) =>
+    compareTransactions(a, b, sortKey, sortDir, categoryMap, methodMap, personMap))
 
   if (isLoading) return <CircularProgress size={20} />
 
@@ -233,21 +297,42 @@ function TransactionTable({
     const colSpan = isEditable ? 3 : 2
     return (
       <>
+        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+          <TextField
+            select
+            size="small"
+            label={t('sortBy')}
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            sx={{ flex: 1 }}
+          >
+            <MenuItem value="name">{t('columns.item')}</MenuItem>
+            <MenuItem value="day">{t('columns.day')}</MenuItem>
+            <MenuItem value="amount">{isFixed ? t('columns.planned') : t('columns.amount')}</MenuItem>
+            <MenuItem value="category">{t('columns.category')}</MenuItem>
+            <MenuItem value="paymentMethod">{t('columns.paymentMethod')}</MenuItem>
+            <MenuItem value="owner">{t('columns.owner')}</MenuItem>
+          </TextField>
+          <IconButton
+            size="small"
+            onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+            sx={{ alignSelf: 'center' }}
+            aria-label={t('sortBy')}
+          >
+            {sortDir === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+          </IconButton>
+        </Box>
         <Box sx={{ overflowX: 'auto' }}>
           <Table size="small">
             <TableHead>
               <TableRow>
-                <SortHeader col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
-                  {t('columns.item')}
-                </SortHeader>
-                <SortHeader col="amount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right">
-                  {isFixed ? t('columns.planned') : t('columns.amount')}
-                </SortHeader>
+                <TableCell>{t('columns.item')}</TableCell>
+                <TableCell align="right">{isFixed ? t('columns.planned') : t('columns.amount')}</TableCell>
                 {isEditable && <TableCell />}
               </TableRow>
             </TableHead>
             <TableBody>
-              {sorted.length === 0 && notDueFixedExpenses.length === 0 ? (
+              {sorted.length === 0 && filteredNotDue.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={colSpan} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                     {t('empty', { label })}
@@ -327,7 +412,7 @@ function TransactionTable({
                       </TableRow>
                     )
                   })}
-                  {notDueFixedExpenses.map((fe) => {
+                  {filteredNotDue.map((fe) => {
                     const category = fe.categoryId ? categoryMap.get(fe.categoryId) : undefined
                     const method = fe.paymentMethodId ? methodMap.get(fe.paymentMethodId) : undefined
                     const person = method?.budgetPersonId && method.budgetPersonId !== 0n
@@ -415,9 +500,15 @@ function TransactionTable({
               <SortHeader col="day" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
                 {t('columns.day')}
               </SortHeader>
-              <TableCell>{t('columns.category')}</TableCell>
-              <TableCell>{t('columns.paymentMethod')}</TableCell>
-              <TableCell>{t('columns.owner')}</TableCell>
+              <SortHeader col="category" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+                {t('columns.category')}
+              </SortHeader>
+              <SortHeader col="paymentMethod" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+                {t('columns.paymentMethod')}
+              </SortHeader>
+              <SortHeader col="owner" sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
+                {t('columns.owner')}
+              </SortHeader>
               {isFixed ? (
                 <>
                   <SortHeader col="amount" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} align="right">
@@ -434,7 +525,7 @@ function TransactionTable({
             </TableRow>
           </TableHead>
           <TableBody>
-            {sorted.length === 0 && notDueFixedExpenses.length === 0 ? (
+            {sorted.length === 0 && filteredNotDue.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={colSpan} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                   {t('empty', { label })}
@@ -520,7 +611,7 @@ function TransactionTable({
                     </TableRow>
                   )
                 })}
-                {notDueFixedExpenses.map((fe) => {
+                {filteredNotDue.map((fe) => {
                   const category = fe.categoryId ? categoryMap.get(fe.categoryId) : undefined
                   const method = fe.paymentMethodId ? methodMap.get(fe.paymentMethodId) : undefined
                   const person = method?.budgetPersonId && method.budgetPersonId !== 0n
@@ -594,10 +685,30 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
   const t = useTranslations('budget.transactions')
   const queryClient = useQueryClient()
   const client = useClient(BudgetService)
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [viewMode, setViewMode] = useViewPreference('tabbed')
   const [editTarget, setEditTarget] = useState<Transaction | null>(null)
   const [editFixedExpenseTarget, setEditFixedExpenseTarget] = useState<FixedExpense | null>(null)
   const [tabIndex, setTabIndex] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
+  const touchStartXRef = useRef<number | null>(null)
+
+  // Split view needs room for two columns side by side — always tabbed on mobile.
+  const effectiveViewMode: ViewMode = isMobile ? 'tabbed' : viewMode
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartXRef.current = e.touches[0].clientX
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    const startX = touchStartXRef.current
+    touchStartXRef.current = null
+    if (startX === null) return
+    const deltaX = e.changedTouches[0].clientX - startX
+    const threshold = 50
+    if (deltaX > threshold) setTabIndex((i) => Math.max(0, i - 1))
+    else if (deltaX < -threshold) setTabIndex((i) => Math.min(1, i + 1))
+  }
 
   const { data: fixedData, isLoading: fixedLoading } = useQuery({
     queryKey: ['transactions', budgetPeriodId, 1],
@@ -642,9 +753,10 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
     (fe) => fe.isActive && !fixedTxs.some((tx) => tx.fixedExpenseId === fe.id),
   )
 
-  // Fixed totals: planned total always; actual only from paid transactions
+  // Fixed/variable totals feed only the panel's overall grand-total line —
+  // per-tab totals were removed from the tab labels themselves (too much
+  // visual weight on mobile for little value).
   const fixedPlannedTotal = fixedTxs.reduce((sum, tx) => sum + txPlannedAmount(tx), 0)
-  const fixedActualTotal = fixedTxs.filter((tx) => tx.isPaid).reduce((sum, tx) => sum + txAmount(tx), 0)
   const variableTotal = variableTxs.reduce((sum, tx) => sum + txAmount(tx), 0)
   const grandTotal = fixedPlannedTotal + variableTotal
 
@@ -658,20 +770,15 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
     categoryMap,
     methodMap,
     personMap,
+    searchQuery,
     onDeleted: refresh,
     onEdit: setEditTarget,
     onRefresh: refresh,
   }
 
-  const fixedLabel = fixedTxs.length
-    ? `${t('fixed')} · ${formatMoney(fixedPlannedTotal)}${fixedActualTotal > 0 ? ` / ${formatMoney(fixedActualTotal)} ${t('paid')}` : ''}`
-    : t('fixed')
-
-  const variableLabel = variableTxs.length ? `${t('variable')} · ${formatMoney(variableTotal)}` : t('variable')
-
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
           <Typography variant="subtitle1" fontWeight={600}>{t('title')}</Typography>
           {grandTotal > 0 && (
@@ -680,28 +787,53 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
             </Typography>
           )}
         </Box>
-        <ToggleButtonGroup
-          size="small"
-          value={viewMode}
-          exclusive
-          onChange={(_, v: ViewMode) => v && setViewMode(v)}
-        >
-          <ToggleButton value="tabbed"><TabIcon fontSize="small" /></ToggleButton>
-          <ToggleButton value="split"><ViewStreamIcon fontSize="small" /></ToggleButton>
-        </ToggleButtonGroup>
+        {!isMobile && (
+          <ToggleButtonGroup
+            size="small"
+            value={viewMode}
+            exclusive
+            onChange={(_, v: ViewMode) => v && setViewMode(v)}
+          >
+            <ToggleButton value="tabbed"><TabIcon fontSize="small" /></ToggleButton>
+            <ToggleButton value="split"><ViewStreamIcon fontSize="small" /></ToggleButton>
+          </ToggleButtonGroup>
+        )}
       </Box>
 
-      {viewMode === 'tabbed' ? (
-        <>
+      <TextField
+        size="small"
+        placeholder={t('searchPlaceholder')}
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        fullWidth={isMobile}
+        sx={{ mb: 1.5, width: { xs: '100%', sm: 320 } }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+            </InputAdornment>
+          ),
+          endAdornment: searchQuery && (
+            <InputAdornment position="end">
+              <IconButton size="small" onClick={() => setSearchQuery('')} aria-label={t('clearSearch')}>
+                <ClearIcon fontSize="small" />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
+      />
+
+      {effectiveViewMode === 'tabbed' ? (
+        <Box onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 1 }}>
-            <Tab label={fixedLabel} />
-            <Tab label={variableLabel} />
+            <Tab label={t('fixed')} />
+            <Tab label={t('variable')} />
           </Tabs>
           {tabIndex === 0
             ? <TransactionTable {...sharedTableProps} isFixed transactions={fixedTxs} isLoading={fixedLoading} label={t('fixed')} notDueFixedExpenses={notDueFixedExpenses} onEditFixedExpense={setEditFixedExpenseTarget} />
             : <TransactionTable {...sharedTableProps} isFixed={false} transactions={variableTxs} isLoading={variableLoading} label={t('variable')} />
           }
-        </>
+        </Box>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
           <Box>
@@ -720,7 +852,7 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
           budgetPeriodId={budgetPeriodId}
           budgetProfileId={budgetProfileId}
           open={addOpen}
-          defaultTypeId={viewMode !== 'tabbed' || tabIndex === 0 ? 1 : 2}
+          defaultTypeId={effectiveViewMode !== 'tabbed' || tabIndex === 0 ? 1 : 2}
           onClose={() => onAddClose?.()}
           onDone={() => { onAddClose?.(); refresh() }}
         />
