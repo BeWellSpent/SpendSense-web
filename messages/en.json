@@ -221,7 +221,8 @@
         "received": "Received"
       },
       "filter": {
-        "spentOnly": "Spent only"
+        "spentOnly": "Spent only",
+        "exceededOnly": "Exceeded only"
       }
     },
     "expenses": {

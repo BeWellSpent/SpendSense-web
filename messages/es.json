@@ -221,7 +221,8 @@
         "received": "Ingreso"
       },
       "filter": {
-        "spentOnly": "Solo gastos"
+        "spentOnly": "Solo gastos",
+        "exceededOnly": "Solo excedido"
       }
     },
     "expenses": {
