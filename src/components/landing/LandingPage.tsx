@@ -22,8 +22,11 @@ import Fade from '@mui/material/Fade'
 import Grid from '@mui/material/Grid'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
 import MenuIcon from '@mui/icons-material/Menu'
 import CloseIcon from '@mui/icons-material/Close'
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import GroupIcon from '@mui/icons-material/Group'
 import CategoryIcon from '@mui/icons-material/Category'
@@ -37,7 +40,11 @@ import LanguageIcon from '@mui/icons-material/Language'
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone'
 import AndroidIcon from '@mui/icons-material/Android'
 import { useLocale, useTranslations } from 'next-intl'
+import { useRouter, usePathname } from 'next/navigation'
 import { useThemeMode } from '@/context/ThemeContext'
+import { routing } from '@/i18n/routing'
+
+const LOCALE_LABELS: Record<string, string> = { en: 'English', es: 'Español' }
 
 const HERO_SLIDES = [
   { bg: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 60%, #1976d2 100%)' },
@@ -61,8 +68,12 @@ export function LandingPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const { effective } = useThemeMode()
 
+  const router = useRouter()
+  const pathname = usePathname()
+
   const [mounted, setMounted] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [langAnchor, setLangAnchor] = useState<null | HTMLElement>(null)
   const [activeSlide, setActiveSlide] = useState(0)
   const [slideVisible, setSlideVisible] = useState(true)
 
@@ -89,6 +100,14 @@ export function LandingPage() {
   function scrollToSection(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
     setDrawerOpen(false)
+  }
+
+  function switchLocale(newLocale: string) {
+    setLangAnchor(null)
+    const newPath = pathname.startsWith(`/${locale}`)
+      ? `/${newLocale}${pathname.slice(`/${locale}`.length)}`
+      : `/${newLocale}`
+    router.push(newPath)
   }
 
   const sectionSx = {
@@ -133,8 +152,37 @@ export function LandingPage() {
             </Box>
           )}
 
-          {/* Auth buttons (both breakpoints) */}
+          {/* Language switcher + auth buttons (both breakpoints) */}
           <Box sx={{ display: 'flex', gap: 1, ml: isMobile ? 'auto' : 0, alignItems: 'center' }}>
+            {/* Language switcher */}
+            <Button
+              onClick={(e) => setLangAnchor(e.currentTarget)}
+              size="small"
+              endIcon={<ArrowDropDownIcon />}
+              startIcon={<LanguageIcon fontSize="small" />}
+              sx={{ textTransform: 'uppercase', fontWeight: 600, color: 'text.secondary', minWidth: 0, px: 1 }}
+            >
+              {locale}
+            </Button>
+            <Menu
+              anchorEl={langAnchor}
+              open={Boolean(langAnchor)}
+              onClose={() => setLangAnchor(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              {routing.locales.map((l) => (
+                <MenuItem
+                  key={l}
+                  selected={l === locale}
+                  onClick={() => switchLocale(l)}
+                  sx={{ minWidth: 120 }}
+                >
+                  {LOCALE_LABELS[l] ?? l.toUpperCase()}
+                </MenuItem>
+              ))}
+            </Menu>
+
             <Button
               component={NextLink}
               href={`/${locale}/login`}
