@@ -207,8 +207,10 @@ interface TableProps {
   notDueFixedExpenses?: FixedExpense[]
   searchQuery?: string
   spentOnly?: boolean
-  overBudgetCategoryIds?: Set<number>
+  exceededOnly?: boolean
+  overBudgetTxIds?: Set<string>
   onToggleSpentOnly?: () => void
+  onToggleExceededOnly?: () => void
   onDeleted: () => void
   onEdit: (t: Transaction) => void
   onEditFixedExpense?: (fe: FixedExpense) => void
@@ -218,7 +220,8 @@ interface TableProps {
 function TransactionTable({
   transactions, isLoading, isEditable, isFixed, savingsCategoryId, budgetPeriodId, budgetProfileId, label,
   categoryMap, methodMap, personMap, notDueFixedExpenses = [], searchQuery = '', spentOnly = false,
-  overBudgetCategoryIds, onToggleSpentOnly, onDeleted, onEdit, onEditFixedExpense, onRefresh,
+  exceededOnly = false, overBudgetTxIds, onToggleSpentOnly, onToggleExceededOnly,
+  onDeleted, onEdit, onEditFixedExpense, onRefresh,
 }: TableProps) {
   const t = useTranslations('budget.transactions')
   const { showError } = useSnackbar()
@@ -296,7 +299,8 @@ function TransactionTable({
     isFixed && isEditable && !tx.isPaid
 
   const filteredTransactions = transactions.filter((tx) => {
-    if (!isFixed && spentOnly && overBudgetCategoryIds && !overBudgetCategoryIds.has(tx.categoryId)) return false
+    if (!isFixed && spentOnly && txAmount(tx) <= 0) return false
+    if (!isFixed && exceededOnly && overBudgetTxIds && !overBudgetTxIds.has(tx.id)) return false
     return matchesSearch(tx.name, tx.categoryId, tx.paymentMethodId, searchQuery, categoryMap, methodMap, personMap)
   })
   const filteredNotDue = notDueFixedExpenses.filter((fe) =>
@@ -336,15 +340,26 @@ function TransactionTable({
             {sortDir === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
           </IconButton>
           {!isFixed && (
-            <ToggleButton
-              value="spentOnly"
-              selected={spentOnly}
-              onChange={() => onToggleSpentOnly?.()}
-              size="small"
-              sx={{ alignSelf: 'center', whiteSpace: 'nowrap' }}
-            >
-              {t('filter.spentOnly')}
-            </ToggleButton>
+            <>
+              <ToggleButton
+                value="spentOnly"
+                selected={spentOnly}
+                onChange={() => onToggleSpentOnly?.()}
+                size="small"
+                sx={{ alignSelf: 'center', whiteSpace: 'nowrap' }}
+              >
+                {t('filter.spentOnly')}
+              </ToggleButton>
+              <ToggleButton
+                value="exceededOnly"
+                selected={exceededOnly}
+                onChange={() => onToggleExceededOnly?.()}
+                size="small"
+                sx={{ alignSelf: 'center', whiteSpace: 'nowrap' }}
+              >
+                {t('filter.exceededOnly')}
+              </ToggleButton>
+            </>
           )}
         </Box>
         <Box sx={{ overflowX: 'auto' }}>
@@ -728,6 +743,7 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
   const [editFixedExpenseTarget, setEditFixedExpenseTarget] = useState<FixedExpense | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [spentOnly, setSpentOnly] = useState(false)
+  const [exceededOnly, setExceededOnly] = useState(false)
   const touchStartXRef = useRef<number | null>(null)
 
   // Which sub-tab (Fixed vs Variable) is stored in the URL, not component
@@ -810,33 +826,43 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
   const variableTotal = variableTxs.reduce((sum, tx) => sum + txAmount(tx), 0)
   const grandTotal = fixedPlannedTotal + variableTotal
 
-  // Categories where total variable spending exceeds the total plan (expense
-  // allocations + fixed expense planned amounts). Used by "Spent only" filter.
-  const overBudgetCategoryIds = (() => {
-    const actualByCat = new Map<number, number>()
-    variableTxs.forEach((tx) => {
-      actualByCat.set(tx.categoryId, (actualByCat.get(tx.categoryId) ?? 0) + txAmount(tx))
-    })
+  // Per-transaction IDs where the transaction is the one that pushed its category
+  // over the total plan (expense allocations + fixed expense planned amounts).
+  // Walks variable transactions chronologically per category; includes spent
+  // transactions from the moment the running total first exceeds the plan.
+  const overBudgetTxIds = (() => {
     const plannedByCat = new Map<number, number>()
-    // 1. Expense allocations (user-set per-category budgets)
     ;(allocationsData?.allocations ?? []).forEach((a: ExpenseAllocation) => {
       const p = Number(a.plannedAmount?.units ?? 0n) + (a.plannedAmount?.nanos ?? 0) / 1e9
       plannedByCat.set(a.categoryId, (plannedByCat.get(a.categoryId) ?? 0) + p)
     })
-    // 2. Fixed transaction planned amounts (recurring bills count towards the plan)
     fixedTxs.forEach((tx) => {
       if (!tx.categoryId) return
       plannedByCat.set(tx.categoryId, (plannedByCat.get(tx.categoryId) ?? 0) + txPlannedAmount(tx))
     })
-    // 3. Active fixed expenses not yet due this period
     const fixedTxExpenseIds = new Set(fixedTxs.map((tx) => tx.fixedExpenseId).filter(Boolean))
     ;(fixedExpensesData?.expenses ?? []).filter((fe) => fe.isActive && !fixedTxExpenseIds.has(fe.id)).forEach((fe) => {
       if (!fe.categoryId) return
       plannedByCat.set(fe.categoryId, (plannedByCat.get(fe.categoryId) ?? 0) + fixedExpensePlannedAmount(fe))
     })
-    const ids = new Set<number>()
-    actualByCat.forEach((actual, catId) => {
-      if (actual > (plannedByCat.get(catId) ?? 0)) ids.add(catId)
+    // Group variable txs by category, then walk chronologically
+    const txsByCat = new Map<number, Transaction[]>()
+    variableTxs.forEach((tx) => {
+      if (!txsByCat.has(tx.categoryId)) txsByCat.set(tx.categoryId, [])
+      txsByCat.get(tx.categoryId)!.push(tx)
+    })
+    const ids = new Set<string>()
+    txsByCat.forEach((txs, catId) => {
+      const planned = plannedByCat.get(catId) ?? 0
+      const sorted = [...txs].sort(
+        (a, b) => Number(a.date?.seconds ?? 0n) - Number(b.date?.seconds ?? 0n) || a.id.localeCompare(b.id)
+      )
+      let running = 0
+      for (const tx of sorted) {
+        running += txAmount(tx)
+        // Include spent transactions from the point the running total crosses the plan
+        if (running > planned && txAmount(tx) > 0) ids.add(tx.id)
+      }
     })
     return ids
   })()
@@ -853,8 +879,10 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
     personMap,
     searchQuery,
     spentOnly,
-    overBudgetCategoryIds,
+    exceededOnly,
+    overBudgetTxIds,
     onToggleSpentOnly: () => setSpentOnly((v) => !v),
+    onToggleExceededOnly: () => setExceededOnly((v) => !v),
     onDeleted: refresh,
     onEdit: setEditTarget,
     onRefresh: refresh,
@@ -908,14 +936,24 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
           }}
         />
         {!isMobile && (effectiveViewMode === 'split' || tabIndex === 1) && (
-          <ToggleButton
-            value="spentOnly"
-            selected={spentOnly}
-            onChange={() => setSpentOnly((v) => !v)}
-            size="small"
-          >
-            {t('filter.spentOnly')}
-          </ToggleButton>
+          <>
+            <ToggleButton
+              value="spentOnly"
+              selected={spentOnly}
+              onChange={() => setSpentOnly((v) => !v)}
+              size="small"
+            >
+              {t('filter.spentOnly')}
+            </ToggleButton>
+            <ToggleButton
+              value="exceededOnly"
+              selected={exceededOnly}
+              onChange={() => setExceededOnly((v) => !v)}
+              size="small"
+            >
+              {t('filter.exceededOnly')}
+            </ToggleButton>
+          </>
         )}
       </Box>
 
