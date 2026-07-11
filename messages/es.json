@@ -338,6 +338,84 @@
       }
     }
   },
+  "landing": {
+    "nav": {
+      "features": "Características",
+      "useCases": "Casos de Uso",
+      "pricing": "Precios",
+      "download": "Descargar",
+      "signIn": "Iniciar sesión",
+      "getStarted": "Comenzar",
+      "menu": "Abrir menú"
+    },
+    "hero": {
+      "slide1Title": "Planifica Antes de Gastar",
+      "slide1Sub": "Sabe exactamente a dónde va tu dinero antes de que comience el mes.",
+      "slide2Title": "Presupuesto Simplificado",
+      "slide2Sub": "Enfoque basado en ingresos que te muestra qué puedes pagar, antes de comprometerte.",
+      "slide3Title": "Comparte y Colabora",
+      "slide3Sub": "Presupuesta junto a tu pareja, familia o hogar — todo en un solo lugar.",
+      "cta": "Empieza Gratis",
+      "learnMore": "Saber más"
+    },
+    "whatIs": {
+      "title": "¿Qué es WellSpent?",
+      "body": "WellSpent es una app de presupuesto basada en ingresos. Declara tus ingresos, planifica tus gastos fijos y ahorros, y luego registra tus gastos variables a medida que avanza el mes. El total en tiempo real siempre muestra cuánto te queda — sin sorpresas al final del mes."
+    },
+    "features": {
+      "title": "Características",
+      "subtitle": "Todo lo que necesitas para tomar el control de tus finanzas.",
+      "item1Title": "Planificación por Ingresos",
+      "item1Desc": "Empieza con lo que ganas, no con lo que gastas. Ve cuánto puedes asignar antes de agregar un solo gasto.",
+      "item2Title": "Presupuestos Compartidos",
+      "item2Desc": "Invita a tu pareja o familiares. Asigna ingresos y gastos a cada persona para tener visibilidad total.",
+      "item3Title": "Gastos Fijos y Variables",
+      "item3Desc": "Registra facturas recurrentes por separado del gasto cotidiano. Sabe exactamente qué costos fijos están pagados cada período.",
+      "item4Title": "Metas de Ahorro",
+      "item4Desc": "Separa dinero para fondos de emergencia, inversiones o reservas fiscales antes de asignar el resto.",
+      "item5Title": "Categorías Inteligentes",
+      "item5Desc": "Categorías del sistema incluidas, más las tuyas propias para lo que no encaje.",
+      "item6Title": "Plan de Gastos",
+      "item6Desc": "Planifica montos de gasto por categoría y ve lo planificado vs. lo real de un vistazo."
+    },
+    "useCases": {
+      "title": "Casos de Uso",
+      "subtitle": "Construido para situaciones de presupuesto reales.",
+      "item1Title": "Parejas y Familias",
+      "item1Desc": "Comparte un presupuesto con distintas fuentes de ingreso y gastos por persona. Todos ven el panorama completo.",
+      "item2Title": "Freelancers",
+      "item2Desc": "¿Ingresos variables? Separa automáticamente una reserva fiscal según tu estado civil fiscal y frecuencia de pago.",
+      "item3Title": "Quienes Planifican con Anticipación",
+      "item3Desc": "Ya sea que estés ahorrando para una casa o intentando gastar menos en salir — WellSpent te ayuda a planificar antes de gastar."
+    },
+    "pricing": {
+      "title": "Precios",
+      "subtitle": "Simple y transparente.",
+      "freeTitle": "Gratis",
+      "freeDesc": "WellSpent es gratis. Sin tarifas ocultas, sin niveles premium — solo una herramienta de presupuesto que funciona.",
+      "cta": "Empezar gratis"
+    },
+    "download": {
+      "title": "Obtén la App",
+      "subtitle": "Accede a WellSpent desde cualquier dispositivo.",
+      "webTitle": "Web",
+      "webDesc": "Usa WellSpent directamente en tu navegador. Sin instalación.",
+      "webCta": "Abrir App Web",
+      "iosTitle": "iOS",
+      "iosDesc": "App para iPhone y iPad — próximamente.",
+      "androidTitle": "Android",
+      "androidDesc": "App para Android — próximamente.",
+      "comingSoon": "Próximamente"
+    },
+    "about": {
+      "title": "Sobre Nosotros",
+      "body": "WellSpent fue creado por un pequeño equipo que se cansó de herramientas de presupuesto que solo muestran lo que ya ocurrió — no lo que está por ocurrir. Creemos que el mejor momento para administrar tu dinero es antes de gastarlo."
+    },
+    "footer": {
+      "tagline": "Planifica antes de gastar.",
+      "rights": "© {year} WellSpent. Todos los derechos reservados."
+    }
+  },
   "invite": {
     "loading": "Cargando invitación…",
     "title": "{inviterName} te invitó a unirte a {budgetName}",

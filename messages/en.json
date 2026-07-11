@@ -338,6 +338,84 @@
       }
     }
   },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "useCases": "Use Cases",
+      "pricing": "Pricing",
+      "download": "Download",
+      "signIn": "Sign In",
+      "getStarted": "Get Started",
+      "menu": "Open menu"
+    },
+    "hero": {
+      "slide1Title": "Plan Before You Spend",
+      "slide1Sub": "Know exactly where your money goes before the month begins.",
+      "slide2Title": "Budgeting Made Simple",
+      "slide2Sub": "Income-first approach that shows you what you can afford — before you commit.",
+      "slide3Title": "Share & Collaborate",
+      "slide3Sub": "Budget together with your partner, family, or household — all in one place.",
+      "cta": "Get Started Free",
+      "learnMore": "Learn more"
+    },
+    "whatIs": {
+      "title": "What is WellSpent?",
+      "body": "WellSpent is an income-first budgeting app. Declare your income, plan your fixed expenses and savings, then track your variable spending as the month unfolds. The running total always shows what you have left — no surprises at month end."
+    },
+    "features": {
+      "title": "Features",
+      "subtitle": "Everything you need to take control of your finances.",
+      "item1Title": "Income-First Planning",
+      "item1Desc": "Start with what you earn, not what you spend. See how much you have to allocate before adding a single expense.",
+      "item2Title": "Shared Budgets",
+      "item2Desc": "Invite your partner or family members. Assign income and expenses to each person for complete visibility.",
+      "item3Title": "Fixed & Variable Expenses",
+      "item3Desc": "Track recurring bills separately from day-to-day spending. Know exactly which fixed costs are paid each period.",
+      "item4Title": "Savings Goals",
+      "item4Desc": "Set aside money for emergency funds, investments, or tax reserves before you allocate the rest.",
+      "item5Title": "Smart Categories",
+      "item5Desc": "System categories out of the box, plus custom ones for anything that doesn't fit.",
+      "item6Title": "Expense Plan",
+      "item6Desc": "Plan per-category spending amounts and see planned vs. actual side by side at a glance."
+    },
+    "useCases": {
+      "title": "Use Cases",
+      "subtitle": "Built for real budgeting situations.",
+      "item1Title": "Couples & Families",
+      "item1Desc": "Share one budget with different income sources and spending per person. Everyone sees the full picture.",
+      "item2Title": "Freelancers",
+      "item2Desc": "Variable income? Set aside a tax reserve automatically based on your filing status and payment frequency.",
+      "item3Title": "Anyone Who Plans Ahead",
+      "item3Desc": "Whether you're saving for a house or just trying to spend less on eating out — WellSpent helps you plan before you spend."
+    },
+    "pricing": {
+      "title": "Pricing",
+      "subtitle": "Simple and transparent.",
+      "freeTitle": "Free",
+      "freeDesc": "WellSpent is free to use. No hidden fees, no premium tiers — just a budgeting tool that works.",
+      "cta": "Start for free"
+    },
+    "download": {
+      "title": "Get the App",
+      "subtitle": "Access WellSpent from any device.",
+      "webTitle": "Web",
+      "webDesc": "Use WellSpent directly in your browser. No installation required.",
+      "webCta": "Open Web App",
+      "iosTitle": "iOS",
+      "iosDesc": "iPhone and iPad app — coming soon.",
+      "androidTitle": "Android",
+      "androidDesc": "Android app — coming soon.",
+      "comingSoon": "Coming Soon"
+    },
+    "about": {
+      "title": "About Us",
+      "body": "WellSpent was built by a small team that got tired of budgeting tools that only show you what happened — not what's about to happen. We believe the best time to manage your money is before you spend it."
+    },
+    "footer": {
+      "tagline": "Plan before you spend.",
+      "rights": "© {year} WellSpent. All rights reserved."
+    }
+  },
   "invite": {
     "loading": "Loading invite…",
     "title": "{inviterName} invited you to join {budgetName}",
