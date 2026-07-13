@@ -25,6 +25,7 @@ import InputAdornment from '@mui/material/InputAdornment'
 import Alert from '@mui/material/Alert'
 import IconButton from '@mui/material/IconButton'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import { PlaidSection } from './PlaidSection'
 
 const US_STATES = [
   ['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'],
@@ -282,6 +283,15 @@ export function ProfileSettings() {
             <Typography variant="caption" color="text.secondary">
               {t('taxNote')}
             </Typography>
+          </>
+        )}
+
+        {isUS && (
+          <>
+            <Divider>
+              <Typography variant="caption" color="text.secondary">{t('plaidTitle')}</Typography>
+            </Divider>
+            <PlaidSection />
           </>
         )}
 

@@ -52,7 +52,27 @@
     "currency": "Moneda",
     "save": "Guardar cambios",
     "saving": "Guardando…",
-    "saved": "Perfil guardado."
+    "saved": "Perfil guardado.",
+    "plaidTitle": "Cuentas bancarias conectadas",
+    "plaid": {
+      "empty": "Aún no hay cuentas bancarias conectadas.",
+      "connect": "Conectar cuenta bancaria",
+      "pickBudget": "¿A qué presupuesto deben ir las transacciones importadas?",
+      "noBudgets": "No tienes presupuestos. Crea uno primero.",
+      "cancel": "Cancelar",
+      "disconnect": "Desconectar",
+      "disconnectTitle": "¿Desconectar cuenta bancaria?",
+      "disconnectBody": "Las transacciones ya importadas de {name} permanecerán. No se importarán nuevas transacciones.",
+      "unknownBank": "Banco desconocido",
+      "unknownBudget": "Presupuesto desconocido",
+      "lastSynced": "Última sincronización {date}",
+      "neverSynced": "Nunca sincronizado",
+      "status": {
+        "active": "Activo",
+        "disconnected": "Desconectado",
+        "error": "Error"
+      }
+    }
   },
   "budget": {
     "list": {

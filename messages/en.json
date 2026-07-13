@@ -52,7 +52,27 @@
     "currency": "Currency",
     "save": "Save changes",
     "saving": "Saving…",
-    "saved": "Profile saved."
+    "saved": "Profile saved.",
+    "plaidTitle": "Connected bank accounts",
+    "plaid": {
+      "empty": "No bank accounts connected yet.",
+      "connect": "Connect a bank account",
+      "pickBudget": "Which budget should imported transactions go to?",
+      "noBudgets": "You have no budgets. Create one first.",
+      "cancel": "Cancel",
+      "disconnect": "Disconnect",
+      "disconnectTitle": "Disconnect bank account?",
+      "disconnectBody": "Transactions already imported from {name} will stay. No new transactions will be imported.",
+      "unknownBank": "Unknown bank",
+      "unknownBudget": "Unknown budget",
+      "lastSynced": "Last synced {date}",
+      "neverSynced": "Never synced",
+      "status": {
+        "active": "Active",
+        "disconnected": "Disconnected",
+        "error": "Error"
+      }
+    }
   },
   "budget": {
     "list": {
