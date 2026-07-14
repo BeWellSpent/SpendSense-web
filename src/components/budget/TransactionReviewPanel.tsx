@@ -104,7 +104,7 @@ export function TransactionReviewPanel({ budgetProfileId, budgetPeriodId, isEdit
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="subtitle2" noWrap>{review.transactionName}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {t('matchedTo')} <strong>{review.fixedExpenseName}</strong>
+                    {t('matchedTo')} <strong>{review.matchedTransactionName}</strong>
                   </Typography>
                 </Box>
                 <Stack direction="row" spacing={0.5} alignItems="center" flexShrink={0}>

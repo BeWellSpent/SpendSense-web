@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/spendsense/v1/budget_connect'
-import type { Transaction, FixedExpense, Category, PaymentMethod, BudgetPerson } from '@/gen/spendsense/v1/budget_pb'
+import type { Transaction, Category, PaymentMethod, BudgetPerson } from '@/gen/spendsense/v1/budget_pb'
 import { useClient } from '@/hooks/useClient'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { useTheme } from '@mui/material/styles'
@@ -24,11 +24,12 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Box from '@mui/material/Box'
 import Divider from '@mui/material/Divider'
 import InputAdornment from '@mui/material/InputAdornment'
+import Chip from '@mui/material/Chip'
 import SearchIcon from '@mui/icons-material/Search'
 import { logger } from '@/lib/logger'
 
-function fmtMoney(fe: FixedExpense): string {
-  const n = Number(fe.plannedAmount?.units ?? 0n) + (fe.plannedAmount?.nanos ?? 0) / 1e9
+function fmtMoney(tx: Transaction): string {
+  const n = Number(tx.plannedAmount?.units ?? 0n) + (tx.plannedAmount?.nanos ?? 0) / 1e9
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
@@ -64,9 +65,12 @@ export function MarkForReviewDialog({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [filter, setFilter] = useState('')
 
-  const { data: feData, isLoading } = useQuery({
-    queryKey: ['fixed-expenses', budgetProfileId],
-    queryFn: () => client.listFixedExpenses({ budgetProfileId }),
+  // Candidates are the period's own Fixed-type transactions — the exact same
+  // query the Fixed tab uses. Savings-derived transactions are transaction_type_id
+  // 1 (Fixed) too, so they're already included with no separate lookup.
+  const { data: fixedTxData, isLoading } = useQuery({
+    queryKey: ['transactions', budgetPeriodId, 1],
+    queryFn: () => client.listTransactions({ budgetPeriodId, transactionTypeId: 1 }),
     enabled: open,
   })
 
@@ -74,12 +78,12 @@ export function MarkForReviewDialog({
     mutationFn: () =>
       client.markTransactionForReview({
         transactionId: transaction!.id,
-        fixedExpenseId: selectedId!,
+        matchedTransactionId: selectedId!,
         budgetProfileId,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transaction-reviews', budgetProfileId] })
-      logger.info('review.markForReview', { transactionId: transaction?.id, fixedExpenseId: selectedId })
+      logger.info('review.markForReview', { transactionId: transaction?.id, matchedTransactionId: selectedId })
       onClose()
     },
   })
@@ -105,8 +109,8 @@ export function MarkForReviewDialog({
     : undefined
 
   const filterLower = filter.toLowerCase()
-  const fixedExpenses = (feData?.expenses ?? []).filter(
-    (fe) => !filterLower || fe.name.toLowerCase().includes(filterLower),
+  const candidates = (fixedTxData?.transactions ?? []).filter(
+    (tx) => !filterLower || tx.name.toLowerCase().includes(filterLower),
   )
 
   return (
@@ -164,12 +168,13 @@ export function MarkForReviewDialog({
           />
         </Box>
 
-        {/* Fixed expense list */}
+        {/* Candidate list — any Fixed-type transaction this period, whether
+            spawned from a fixed expense template or a savings source */}
         {isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
-        ) : fixedExpenses.length === 0 ? (
+        ) : candidates.length === 0 ? (
           <Box sx={{ px: 2, py: 3 }}>
             <Typography variant="body2" color="text.secondary">
               {filter ? t('noResults') : t('noFixed')}
@@ -177,16 +182,17 @@ export function MarkForReviewDialog({
           </Box>
         ) : (
           <List disablePadding>
-            {fixedExpenses.map((fe) => (
-              <ListItem key={fe.id} disablePadding>
+            {candidates.map((tx) => (
+              <ListItem key={tx.id} disablePadding>
                 <ListItemButton
-                  selected={selectedId === fe.id}
-                  onClick={() => setSelectedId(fe.id)}
+                  selected={selectedId === tx.id}
+                  onClick={() => setSelectedId(tx.id)}
                 >
                   <ListItemText
-                    primary={fe.name}
-                    secondary={fmtMoney(fe)}
+                    primary={tx.name}
+                    secondary={fmtMoney(tx)}
                   />
+                  {tx.isPaid && <Chip label={t('paidBadge')} size="small" variant="outlined" sx={{ ml: 1 }} />}
                 </ListItemButton>
               </ListItem>
             ))}

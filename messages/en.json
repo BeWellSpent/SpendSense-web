@@ -260,9 +260,10 @@
       "category": "Category",
       "paymentMethod": "Payment method",
       "owner": "Owner",
-      "filterPlaceholder": "Filter fixed expenses…",
-      "noFixed": "No active fixed expenses to match against.",
-      "noResults": "No fixed expenses match your search.",
+      "filterPlaceholder": "Filter transactions…",
+      "noFixed": "No fixed transactions this period to match against.",
+      "noResults": "No transactions match your search.",
+      "paidBadge": "Paid",
       "confirm": "Flag",
       "cancel": "Cancel"
     },
