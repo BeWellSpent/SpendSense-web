@@ -25,6 +25,8 @@ import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import Divider from '@mui/material/Divider'
+import { Timestamp } from '@bufbuild/protobuf'
 
 interface Props {
   budgetPeriodId: string
@@ -71,6 +73,33 @@ const DAY_OF_WEEK_OPTIONS = [
 
 // frequencyUnit wire values: 1 = MONTH (default, also covers YEAR client-side
 // via interval_months = years * 12), 2 = WEEK.
+function parseUTCDate(str: string): Date {
+  const [y, m, d] = str.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d))
+}
+
+function addUTCMonths(d: Date, n: number): Date {
+  const result = new Date(d)
+  result.setUTCMonth(result.getUTCMonth() + n)
+  return result
+}
+
+function addUTCWeeks(d: Date, n: number): Date {
+  return new Date(d.getTime() + n * 7 * 24 * 60 * 60 * 1000)
+}
+
+function monthsBetween(from: Date, to: Date): number {
+  return (to.getUTCFullYear() - from.getUTCFullYear()) * 12 + (to.getUTCMonth() - from.getUTCMonth())
+}
+
+function weeksBetween(from: Date, to: Date): number {
+  return Math.round((to.getTime() - from.getTime()) / (7 * 24 * 60 * 60 * 1000))
+}
+
+function dateToString(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+}
+
 function frequencyFieldsFor(unit: FrequencyUnitUI, count: number, dayOfWeek: number) {
   if (unit === 'week') {
     return { frequencyUnit: 2, intervalMonths: 1, intervalWeeks: count, dayOfWeek }
@@ -96,6 +125,8 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
   const [frequencyCount, setFrequencyCount] = useState(1)
   const [isFutureStart, setIsFutureStart] = useState(false)
   const [anchorDateStr, setAnchorDateStr] = useState(todayString)
+  const [endDateStr, setEndDateStr] = useState('')
+  const [paymentsInput, setPaymentsInput] = useState('')
   const [categoryId, setCategoryId] = useState<number>(0)
   const [paymentMethodId, setPaymentMethodId] = useState('')
   const [typeId, setTypeId] = useState<number>(defaultTypeId)
@@ -142,14 +173,56 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
       intervalWeeks: number
       dayOfWeek: number
       anchorDate?: { seconds: bigint; nanos: number }
+      endDate?: Timestamp
+      totalPayments: number
     }) => client.createFixedExpense({ budgetProfileId, ...vars }),
   })
 
   const isPending = txPending || fixedPending
 
+  function getAnchor(): Date {
+    if (isFutureStart && anchorDateStr) return parseUTCDate(anchorDateStr)
+    return new Date()
+  }
+
+  function recalcEndDate(payments: string, unit: FrequencyUnitUI, count: number) {
+    const n = parseInt(payments, 10)
+    if (!isNaN(n) && n > 0) {
+      const anchor = getAnchor()
+      if (unit === 'week') {
+        setEndDateStr(dateToString(addUTCWeeks(anchor, (n - 1) * count)))
+      } else {
+        const intervalMonths = unit === 'year' ? count * 12 : count
+        setEndDateStr(dateToString(addUTCMonths(anchor, (n - 1) * intervalMonths)))
+      }
+    }
+  }
+
   function handleFrequencyUnitChange(next: FrequencyUnitUI) {
     setFrequencyUnitUI(next)
-    setFrequencyCount(1) // a count picked in one unit isn't a meaningful default in another
+    setFrequencyCount(1)
+    if (paymentsInput) recalcEndDate(paymentsInput, next, 1)
+  }
+
+  function handlePaymentsChange(val: string) {
+    setPaymentsInput(val)
+    if (val === '') { setEndDateStr(''); return }
+    recalcEndDate(val, frequencyUnitUI, frequencyCount)
+  }
+
+  function handleEndDateChange(val: string) {
+    setEndDateStr(val)
+    if (!val) { setPaymentsInput(''); return }
+    const anchor = getAnchor()
+    const end = parseUTCDate(val)
+    let payments: number
+    if (frequencyUnitUI === 'week') {
+      payments = Math.round(weeksBetween(anchor, end) / frequencyCount) + 1
+    } else {
+      const intervalMonths = frequencyUnitUI === 'year' ? frequencyCount * 12 : frequencyCount
+      payments = Math.round(monthsBetween(anchor, end) / intervalMonths) + 1
+    }
+    setPaymentsInput(String(Math.max(1, payments)))
   }
 
   const isDateValid = isFixed
@@ -167,6 +240,8 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
     setCategoryId(0)
     setPaymentMethodId('')
     setIsFutureStart(false)
+    setEndDateStr('')
+    setPaymentsInput('')
     setFlow('spent')
     // Intentionally keep typeId, date, and dayOfMonth so the next transaction
     // defaults to the same type and date the user just used.
@@ -180,6 +255,9 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
         const rawAmt = parseFloat(amount)
         const units = BigInt(Math.trunc(rawAmt))
         const nanos = Math.round((rawAmt - Number(units)) * 1e9)
+        const totalPayments = parseInt(paymentsInput, 10) || 0
+        let endDate: Timestamp | undefined
+        if (endDateStr) endDate = Timestamp.fromDate(parseUTCDate(endDateStr))
         await createFixed({
           name,
           plannedAmount: { units, nanos },
@@ -188,6 +266,8 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
           dayOfMonth,
           ...frequencyFieldsFor(frequencyUnitUI, frequencyCount, dayOfWeek),
           ...(isFutureStart ? { anchorDate: dateStringToTimestamp(anchorDateStr) } : {}),
+          endDate,
+          totalPayments,
         })
         logger.info('fixedExpense.create', { budgetProfileId, name, amount })
         queryClient.invalidateQueries({ queryKey: ['transactions', budgetPeriodId, 1] })
@@ -305,13 +385,35 @@ export function AddTransactionModal({ budgetPeriodId, budgetProfileId, open, emb
             <Stack spacing={0.5} alignItems="center">
               <ScrollNumberPicker
                 value={frequencyCount}
-                onChange={setFrequencyCount}
+                onChange={(v) => { setFrequencyCount(v); if (paymentsInput) recalcEndDate(paymentsInput, frequencyUnitUI, v) }}
                 min={FREQUENCY_COUNT_RANGE[frequencyUnitUI].min}
                 max={FREQUENCY_COUNT_RANGE[frequencyUnitUI].max}
                 aria-label="Repeat count"
               />
               <Typography variant="caption" color="text.secondary">How often this expense is due</Typography>
             </Stack>
+          </Stack>
+          <Divider />
+          <Typography variant="body2" color="text.secondary">Payment plan (optional)</Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Number of payments"
+              type="number"
+              value={paymentsInput}
+              onChange={(e) => handlePaymentsChange(e.target.value)}
+              fullWidth
+              inputProps={{ min: 1, step: 1, inputMode: 'numeric' }}
+              helperText="Sets the end date automatically"
+            />
+            <TextField
+              label="End date"
+              type="date"
+              value={endDateStr}
+              onChange={(e) => handleEndDateChange(e.target.value)}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              helperText="Sets the payment count automatically"
+            />
           </Stack>
         </>
       ) : (
