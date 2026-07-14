@@ -99,7 +99,7 @@ function weeksBetweenDates(from: Date, to: Date): number {
 
 function paymentProgress(fe: FixedExpense): string | null {
   if (!fe.totalPayments || fe.totalPayments <= 0) return null
-  if (!fe.anchorDate?.seconds) return `?/${fe.totalPayments}`
+  if (!fe.anchorDate?.seconds) return `1/${fe.totalPayments}`
   const anchor = new Date(Number(fe.anchorDate.seconds) * 1000)
   const now = new Date()
   let made: number
@@ -645,7 +645,16 @@ function TransactionTable({
                   return (
                     <TableRow key={tx.id} hover>
                       <TableCell>
-                        <Typography variant="body2" fontWeight={500}>{tx.name}</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="body2" fontWeight={500}>{tx.name}</Typography>
+                          {isFixed && tx.fixedExpenseId && (() => {
+                            const fe = fixedExpenseMap?.get(tx.fixedExpenseId)
+                            const progress = fe ? paymentProgress(fe) : null
+                            return progress ? (
+                              <Typography variant="caption" color="text.secondary">({progress})</Typography>
+                            ) : null
+                          })()}
+                        </Box>
                       </TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>
                         {formatDate(tx.date)}
@@ -735,6 +744,12 @@ function TransactionTable({
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           <Typography variant="body2" fontWeight={500} color="text.disabled">{fe.name}</Typography>
+                          {(() => {
+                            const progress = paymentProgress(fe)
+                            return progress ? (
+                              <Typography variant="caption" color="text.disabled">({progress})</Typography>
+                            ) : null
+                          })()}
                           <Tooltip title={t('notDueTooltip', { date: nextDueDateLabel(fe) })}>
                             <IconButton size="small" onClick={() => onEditFixedExpense?.(fe)}>
                               <ErrorOutlineIcon sx={{ fontSize: 16 }} color="warning" />
