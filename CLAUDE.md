@@ -49,6 +49,46 @@ import { logger } from '@/lib/logger'
 logger.info('budget.create', { budgetId })
 ```
 
+## Component composition (required on every feature)
+
+A file mixing more than one visual section or responsibility, or copy-pasted
+across files, is a defect — not a style preference. This is non-negotiable in
+the same way mobile support is: don't let a panel grow past ~200-300 lines
+without splitting it, and don't let a task finish with dead code left behind.
+(This codebase accumulated several 900-1200 line files with multiple
+components inlined before a cleanup pass fixed it — see the "refactor:
+composition + dead-code cleanup" PR for the reference shape of a proper split.)
+
+- **One concern per file.** A panel component that renders a list, an add
+  dialog, and an edit dialog should be three files: `XPanel.tsx` plus
+  `xPanel/AddXDialog.tsx` and `xPanel/EditXDialog.tsx` (or similar). Dialogs
+  own their own draft/form state and call back with the final value on
+  confirm — don't thread `draftName`/`draftColor`-style state through the
+  parent just because the dialog used to be inline.
+- **Extract before you duplicate.** If you're about to write the same
+  `useMediaQuery(theme.breakpoints.down('sm'))` pair, the same color-by-ratio
+  function, or the same per-row derivation logic in a second place (e.g. a
+  mobile card list and a desktop table computing the same "is this overdue"
+  flag independently), stop and extract a shared hook/helper instead. Two
+  near-identical blocks computing the same thing is a bug waiting to happen
+  when one gets updated and the other doesn't.
+- **Pure logic goes in plain `.ts` helper files**, not inline in the
+  component — formatting, sorting/filtering, color/threshold logic, data
+  shaping. This makes it independently testable without mocking
+  `next-intl`/`react-query`/`next/navigation` just to exercise a function
+  that doesn't use any of them.
+- **No dead code.** Before calling a feature done, check that every file,
+  export, and handler you touched is actually reachable. Run `npx knip`
+  (`npx --yes knip` if not installed) to catch unused files/exports; a
+  superseded component (e.g. an old "Add" modal replaced by a combined
+  "Add/Edit" one) must be deleted in the same change, not left orphaned.
+- **Established shared hooks** — reuse these instead of re-inlining the
+  pattern: `useIsMobile()` (`src/hooks/useIsMobile.ts`) for the `sm`
+  breakpoint check, `useCurrency()` (`src/hooks/useCurrency.ts`) for the
+  user's saved currency/locale when formatting money (never hardcode
+  `en-US`/`USD` — use `formatMoney`/`formatMoneyFromNumber` from
+  `src/lib/format.ts`).
+
 ## Git workflow
 
 `main` is production. Never commit or push directly to `main`.
@@ -93,8 +133,8 @@ gh pr merge develop --auto --merge
 Every UI change must work on both mobile and desktop. This is non-negotiable — if a spec or task doesn't address responsive behaviour, challenge it before implementing.
 
 Established patterns:
-- **Breakpoint**: `sm` is the mobile/desktop boundary. Use `useMediaQuery(theme.breakpoints.down('sm'))` for conditional rendering; use `sx={{ prop: { xs: mobileValue, sm: desktopValue } }}` for CSS-only differences.
-- **Dialogs**: all `<Dialog>` components must include `fullScreen={useMediaQuery(theme.breakpoints.down('sm'))}`.
+- **Breakpoint**: `sm` is the mobile/desktop boundary. Use the shared `useIsMobile()` hook (`src/hooks/useIsMobile.ts`) for conditional rendering — don't re-inline `useTheme()` + `useMediaQuery(theme.breakpoints.down('sm'))`; use `sx={{ prop: { xs: mobileValue, sm: desktopValue } }}` for CSS-only differences. (A different breakpoint, e.g. `BudgetSidebar`'s `md`, still needs the raw `useMediaQuery` call — `useIsMobile()` is specifically the `sm` check.)
+- **Dialogs**: all `<Dialog>` components must include `fullScreen={useIsMobile()}`.
 - **Layout**: the sidebar collapses to a bottom nav on mobile (`BudgetSidebar` handles this via `isMobile`). Content uses `px: { xs: 1, sm: 3 }` to avoid edge-to-edge crowding.
 - **FABs**: fixed-position FABs use `bottom: { xs: 80, sm: 24 }` to clear the mobile bottom nav.
 - **Tables**: consider a compact stacked-row layout on mobile when a desktop table has many columns (see `TransactionsPanel` for the pattern).
