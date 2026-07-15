@@ -13,7 +13,7 @@ import { useClient } from '@/hooks/useClient'
 import { useBudgetRole } from '@/hooks/useBudgetRole'
 import { TransactionsPanel } from './TransactionsPanel'
 import { ExpensesPanel } from './ExpensesPanel'
-import { TransactionReviewPanel } from './TransactionReviewPanel'
+import { TransactionReviewPanel, transactionReviewCount } from './TransactionReviewPanel'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -82,7 +82,7 @@ export function BudgetView({ budgetId }: Props) {
     queryFn: () => client.listTransactionReviews({ budgetProfileId: budgetId }),
     enabled: !!budgetId,
   })
-  const pendingReviewCount = reviewData?.reviews.filter((r) => r.status === 'pending').length ?? 0
+  const pendingReviewCount = reviewData ? transactionReviewCount(reviewData.reviews) : 0
 
   if (profileLoading || periodsLoading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}><CircularProgress /></Box>

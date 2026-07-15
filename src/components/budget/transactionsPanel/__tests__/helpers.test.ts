@@ -1,11 +1,3 @@
-jest.mock('next-intl', () => ({ useTranslations: () => (key: string) => key }))
-jest.mock('@/gen/wellspent/v1/budget_connect', () => ({ BudgetService: {} }))
-jest.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams() }))
-jest.mock('@/i18n/navigation', () => ({
-  usePathname: () => '/mock',
-  useRouter: () => ({ replace: jest.fn(), push: jest.fn() }),
-}))
-
 import {
   resolveCategoryName,
   resolveMethodName,
@@ -13,7 +5,7 @@ import {
   matchesSearch,
   compareTransactions,
   groupTransactionsByDay,
-} from '../TransactionsPanel'
+} from '../helpers'
 import type { Transaction, Category, PaymentMethod, BudgetPerson } from '@/gen/wellspent/v1/budget_pb'
 
 function money(units: bigint): { units: bigint; nanos: number } {

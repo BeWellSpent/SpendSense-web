@@ -3,17 +3,20 @@
 import { useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { useTheme, useMediaQuery } from '@mui/material'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { BudgetService } from '@/gen/wellspent/v1/budget_connect'
 import type { Category, ExpenseAllocation, FixedExpense } from '@/gen/wellspent/v1/budget_pb'
 import { EditFixedExpenseModal } from '@/components/budget/modals/EditFixedExpenseModal'
 import { useClient } from '@/hooks/useClient'
+import { useCurrency } from '@/hooks/useCurrency'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { logger } from '@/lib/logger'
-import {
-  PieChart, Pie, Cell,
-  BarChart, Bar, XAxis, YAxis, Tooltip as RechartTooltip, ResponsiveContainer,
-} from 'recharts'
+import { formatMoneyFromNumber } from '@/lib/format'
+import { parseMoney, moneyToProto, computeCategoryRow, type NotDueInfo } from './expensesPanel/helpers'
+import { ExpenseChart, type ExpenseChartDatum } from './expensesPanel/ExpenseChart'
+import { CategoryCardMobile } from './expensesPanel/CategoryCardMobile'
+import { CategoryTableRow } from './expensesPanel/CategoryTableRow'
+import { PlanSummary } from './expensesPanel/PlanSummary'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -26,22 +29,11 @@ import TableRow from '@mui/material/TableRow'
 import TableFooter from '@mui/material/TableFooter'
 import CircularProgress from '@mui/material/CircularProgress'
 import TextField from '@mui/material/TextField'
-import Divider from '@mui/material/Divider'
-import Chip from '@mui/material/Chip'
-import IconButton from '@mui/material/IconButton'
 import Button from '@mui/material/Button'
-import Paper from '@mui/material/Paper'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import ClearIcon from '@mui/icons-material/Clear'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import EditIcon from '@mui/icons-material/Edit'
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
-import Tooltip from '@mui/material/Tooltip'
 
 const CHART_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#a855f7', '#14b8a6', '#f97316']
 
@@ -51,104 +43,15 @@ interface Props {
   canEdit?: boolean
 }
 
-function parseMoney(units: bigint, nanos: number): number {
-  return Number(units) + nanos / 1e9
-}
-
-function formatMoney(amount: number): string {
-  return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
-
-function moneyToProto(amount: number) {
-  const units = BigInt(Math.trunc(amount))
-  const nanos = Math.round((amount - Number(units)) * 1e9)
-  return { units, nanos }
-}
-
-function actualColor(actual: number, plannedTotal: number): string | undefined {
-  if (plannedTotal <= 0) return undefined
-  const ratio = actual / plannedTotal
-  if (ratio > 1) return 'error.main'
-  if (ratio >= 1) return 'success.main'
-  if (ratio >= 0.9) return 'warning.main'
-  return 'success.main'
-}
-
-function spentColor(spent: number, planned: number): string {
-  if (planned <= 0) return 'success.main'
-  const pct = (spent / planned) * 100
-  if (pct >= 90) return 'error.main'
-  if (pct >= 75) return '#f59e0b'
-  if (pct >= 50) return '#eab308'
-  return 'success.main'
-}
-
-// Savings rows use inverted thresholds: more saved = greener
-function savingsActualColor(actual: number, plannedTotal: number): string | undefined {
-  if (plannedTotal <= 0) return undefined
-  const ratio = actual / plannedTotal
-  if (ratio >= 0.9) return 'success.main'
-  if (ratio >= 0.7) return '#eab308'
-  if (ratio >= 0.5) return 'warning.main'
-  return 'error.main'
-}
-
-interface EditCellProps {
-  value: number | undefined
-  onSave: (amount: number | null) => void
-}
-
-function EditCell({ value, onSave }: EditCellProps) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState('')
-
-  function startEdit() {
-    setDraft(value != null ? value.toFixed(2) : '')
-    setEditing(true)
-  }
-
-  function commit() {
-    setEditing(false)
-    const n = parseFloat(draft)
-    if (!isNaN(n) && n >= 0) {
-      onSave(n)
-    } else if (draft.trim() === '') {
-      onSave(null)
-    }
-  }
-
-  if (editing) {
-    return (
-      <TextField
-        size="small"
-        autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false) }}
-        inputProps={{ style: { width: 80, padding: '2px 6px', fontSize: 13 } }}
-        variant="outlined"
-      />
-    )
-  }
-
-  return (
-    <Box
-      sx={{ cursor: 'text', minWidth: 80, display: 'inline-block', '&:hover': { textDecoration: 'underline dotted' } }}
-      onClick={startEdit}
-    >
-      {value != null
-        ? formatMoney(value)
-        : <Typography component="span" variant="body2" color="text.disabled">—</Typography>}
-    </Box>
-  )
-}
-
 export function ExpensesPanel({ budgetProfileId, budgetPeriodId, canEdit = true }: Props) {
   const t = useTranslations('budget.expenses')
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const isMobile = useIsMobile()
   const { showError } = useSnackbar()
+  const { currency, locale } = useCurrency()
+  const formatMoney = useCallback(
+    (amount: number) => formatMoneyFromNumber(amount, currency, locale),
+    [currency, locale],
+  )
   const client = useClient(BudgetService)
 
   const [pinnedCategoryIds, setPinnedCategoryIds] = useState<Set<number>>(new Set())
@@ -335,7 +238,7 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId, canEdit = true 
   // Fixed-expense categories not reflected by a due transaction this period
   // — shown as a muted "not due" row so the category never simply vanishes
   // between due periods (see docs/features/fixed-transactions-frequency.md).
-  const notDueFixedByCat = new Map<number, { amount: number; nextDue: Date | undefined; fixedExpense: FixedExpense }>()
+  const notDueFixedByCat = new Map<number, NotDueInfo>()
   const fixedExpenseCatIds = new Set<number>()
   for (const fe of fixedExpenses) {
     if (!fe.categoryId) continue
@@ -373,8 +276,12 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId, canEdit = true 
   }
   const savingsTotal = [...savingsByPerson.values()].reduce((a, b) => a + b, 0)
 
+  const categoryRowContext = {
+    people, savingsCat, savingsTotal, notDueFixedByCat, catIdsWithAllocs, fixedPlannedByCat, allocMap, txnActualByCat,
+  }
+
   // chart data — Savings uses savings sources; fixed-only categories fall back to fixedPlannedByCat
-  const chartData = (() => {
+  const chartData: ExpenseChartDatum[] = (() => {
     if (chartGrouping === 'category') {
       return visibleCats.map((cat, i) => {
         let value = 0
@@ -443,21 +350,11 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId, canEdit = true 
   // plan — not the full actual — and only once the plan is actually exceeded.
   let totalActualSpent = 0
   for (const cat of visibleCats) {
-    let planned = 0
-    if (savingsCat && cat.id === savingsCat.id) {
-      planned = savingsTotal
-    } else {
-      for (const p of people) {
-        const alloc = allocMap.get(`${cat.id}:${p.id}`)
-        if (alloc) planned += parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
-      }
-      if (planned === 0) planned = fixedPlannedByCat.get(cat.id) ?? 0
-    }
-    const actual = txnActualByCat.get(cat.id) ?? 0
-    if (planned <= 0) {
+    const { plannedTotal, actual } = computeCategoryRow(cat, categoryRowContext)
+    if (plannedTotal <= 0) {
       totalActualSpent += actual
-    } else if (actual > planned) {
-      totalActualSpent += actual - planned
+    } else if (actual > plannedTotal) {
+      totalActualSpent += actual - plannedTotal
     }
   }
 
@@ -487,77 +384,16 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId, canEdit = true 
         )}
       </Box>
 
-      {/* Chart */}
       {visibleCats.length > 0 && (
-        <Box mb={2}>
-          <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={chartType}
-              onChange={(_, v) => v && setChartType(v)}
-            >
-              <ToggleButton value="pie">{t('chart.pie')}</ToggleButton>
-              <ToggleButton value="bar">{t('chart.bar')}</ToggleButton>
-            </ToggleButtonGroup>
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={chartGrouping}
-              onChange={(_, v) => v && setChartGrouping(v)}
-            >
-              <ToggleButton value="category">{t('chart.byCategory')}</ToggleButton>
-              <ToggleButton value="person">{t('chart.byPerson')}</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
-          {chartData.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{t('chart.noData')}</Typography>
-          ) : (
-            <>
-              {chartType === 'pie' ? (
-                <ResponsiveContainer width="100%" height={isMobile ? 180 : 240}>
-                  <PieChart>
-                    <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={isMobile ? 70 : 90}>
-                      {chartData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <RechartTooltip formatter={(v) => typeof v === 'number' ? formatMoney(v) : ''} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <ResponsiveContainer width="100%" height={isMobile ? 180 : 240}>
-                  <BarChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 32 }}>
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" interval={0} />
-                    <YAxis tickFormatter={(v) => `$${v}`} tick={{ fontSize: 11 }} />
-                    <RechartTooltip formatter={(v) => typeof v === 'number' ? formatMoney(v) : ''} />
-                    <Bar dataKey="value" name={t('plannedAmount')} radius={[4, 4, 0, 0]}>
-                      {chartData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-              {/* Custom legend with per-item values and grand total */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, mt: 1 }}>
-                {chartData.map((entry, i) => (
-                  <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: entry.color, flexShrink: 0 }} />
-                    <Typography variant="caption">
-                      {entry.name} ({formatMoney(entry.value)})
-                    </Typography>
-                  </Box>
-                ))}
-                {chartData.length > 1 && (
-                  <Typography variant="caption" fontWeight={700} sx={{ mt: 0.5 }}>
-                    Total: {formatMoney(chartData.reduce((s, d) => s + d.value, 0))}
-                  </Typography>
-                )}
-              </Box>
-            </>
-          )}
-        </Box>
+        <ExpenseChart
+          chartData={chartData}
+          chartType={chartType}
+          chartGrouping={chartGrouping}
+          onChartTypeChange={setChartType}
+          onChartGroupingChange={setChartGrouping}
+          formatMoney={formatMoney}
+          isMobile={isMobile}
+        />
       )}
 
       {/* Category list */}
@@ -567,126 +403,23 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId, canEdit = true 
         </Typography>
       ) : isMobile ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {visibleCats.map((cat) => {
-            const isSavings = savingsCat?.id === cat.id
-            const notDueInfo = notDueFixedByCat.get(cat.id)
-            const isNotDue = !isSavings && !!notDueInfo
-            const isFixedOnly = !isSavings && !catIdsWithAllocs.has(cat.id) && (fixedPlannedByCat.has(cat.id) || isNotDue)
-            const actual = txnActualByCat.get(cat.id) ?? 0
-            let plannedTotal = 0
-            if (isSavings) {
-              plannedTotal = savingsTotal
-            } else if (isNotDue) {
-              plannedTotal = notDueInfo.amount
-            } else {
-              for (const p of people) {
-                const alloc = allocMap.get(`${cat.id}:${p.id}`)
-                if (alloc) plannedTotal += parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
-              }
-              if (plannedTotal === 0) plannedTotal = fixedPlannedByCat.get(cat.id) ?? 0
-            }
-            const colorFn = isSavings ? savingsActualColor : actualColor
-            const headerActualColor = isNotDue ? undefined : colorFn(actual, plannedTotal)
-            return (
-              <Paper key={cat.id} variant="outlined" sx={{ p: 1.5 }}>
-                {/* Card header */}
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-                    {cat.color && (
-                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: cat.color, flexShrink: 0 }} />
-                    )}
-                    <Typography variant="body2" fontWeight={600} noWrap>{cat.name}</Typography>
-                    {cat.isSystem && (
-                      <Chip label={t('global')} size="small" variant="outlined" sx={{ fontSize: '0.6rem', height: 16 }} />
-                    )}
-                    {isNotDue && (
-                      <Tooltip title={t('notDueTooltip', { date: notDueInfo.nextDue ? notDueInfo.nextDue.toLocaleDateString() : '' })}>
-                        <IconButton size="small" onClick={() => canEdit && setEditFixedExpense(notDueInfo.fixedExpense)}>
-                          <ErrorOutlineIcon sx={{ fontSize: 16 }} color="warning" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-                    <Box sx={{ textAlign: 'right' }}>
-                      <Typography variant="caption" color="text.secondary" display="block">{t('plannedAmount')}</Typography>
-                      <Typography variant="body2" fontWeight={600} color={isNotDue ? 'text.disabled' : undefined}>
-                        {plannedTotal > 0 ? formatMoney(plannedTotal) : '—'}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ textAlign: 'right' }}>
-                      <Typography variant="caption" color="text.secondary" display="block">{t('actual')}</Typography>
-                      <Typography variant="body2" fontWeight={600} sx={{ color: actual < 0 ? 'success.main' : headerActualColor }}>
-                        {actual > 0 ? formatMoney(actual) : actual < 0 ? `+${formatMoney(-actual)}` : '—'}
-                      </Typography>
-                    </Box>
-                    {canEdit && !isSavings && !isFixedOnly && (
-                      <IconButton size="small" onClick={() => handleRemoveCategory(cat.id)}>
-                        <DeleteOutlineIcon sx={{ fontSize: 16 }} />
-                      </IconButton>
-                    )}
-                  </Box>
-                </Box>
-                {isNotDue && (
-                  <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 0.25 }}>
-                    {t('notDueTooltip', { date: notDueInfo.nextDue ? notDueInfo.nextDue.toLocaleDateString() : '' })}
-                  </Typography>
-                )}
-                {/* Person rows */}
-                {people.length > 0 && (
-                  <>
-                    <Divider sx={{ my: 1 }} />
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                      {people.map((p) => {
-                        const personActual = txnActualByPersonCat.get(`${cat.id}:${p.id}`) ?? 0
-                        let val: number | undefined
-                        if (isSavings) {
-                          const sv = savingsByPerson.get(p.id.toString())
-                          val = sv !== undefined ? sv : undefined
-                        } else {
-                          const alloc = allocMap.get(`${cat.id}:${p.id}`)
-                          val = alloc
-                            ? parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
-                            : undefined
-                        }
-                        const alloc = isSavings ? undefined : allocMap.get(`${cat.id}:${p.id}`)
-                        const fixedPersonAmt = !isSavings ? fixedPlannedByPersonCat.get(`${cat.id}:${p.id}`) : undefined
-                        const displayVal = val ?? fixedPersonAmt
-                        return (
-                          <Box key={p.id.toString()} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {p.color && (
-                              <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: p.color, flexShrink: 0 }} />
-                            )}
-                            <Typography
-                              variant="body2"
-                              sx={{ flex: 1, color: p.color || 'text.primary', minWidth: 0 }}
-                              noWrap
-                            >
-                              {p.userName}
-                            </Typography>
-                            <Typography variant="body2" sx={{ minWidth: 64, textAlign: 'right', color: 'text.secondary' }}>
-                              {displayVal != null ? formatMoney(displayVal) : '—'}
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{ minWidth: 64, textAlign: 'right', color: personActual < 0 ? 'success.main' : (colorFn(personActual, displayVal ?? 0) || 'text.secondary') }}
-                            >
-                              {personActual > 0 ? formatMoney(personActual) : personActual < 0 ? `+${formatMoney(-personActual)}` : '—'}
-                            </Typography>
-                            {canEdit && !isSavings && !isFixedOnly && (
-                              <IconButton size="small" onClick={() => openEditDialog(cat, p.id, p.userName, val, alloc)}>
-                                <EditIcon sx={{ fontSize: 15 }} />
-                              </IconButton>
-                            )}
-                          </Box>
-                        )
-                      })}
-                    </Box>
-                  </>
-                )}
-              </Paper>
-            )
-          })}
+          {visibleCats.map((cat) => (
+            <CategoryCardMobile
+              key={cat.id}
+              cat={cat}
+              people={people}
+              rowData={computeCategoryRow(cat, categoryRowContext)}
+              allocMap={allocMap}
+              fixedPlannedByPersonCat={fixedPlannedByPersonCat}
+              txnActualByPersonCat={txnActualByPersonCat}
+              savingsByPerson={savingsByPerson}
+              canEdit={canEdit}
+              formatMoney={formatMoney}
+              onRemoveCategory={handleRemoveCategory}
+              onOpenEditDialog={openEditDialog}
+              onEditFixedExpense={setEditFixedExpense}
+            />
+          ))}
         </Box>
       ) : (
         // Desktop: table with actions column at end
@@ -715,121 +448,24 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId, canEdit = true 
               </TableRow>
             </TableHead>
             <TableBody>
-              {visibleCats.map((cat) => {
-                const isSavings = savingsCat?.id === cat.id
-                const notDueInfo = notDueFixedByCat.get(cat.id)
-                const isNotDue = !isSavings && !!notDueInfo
-                const isFixedOnly = !isSavings && !catIdsWithAllocs.has(cat.id) && (fixedPlannedByCat.has(cat.id) || isNotDue)
-                const actual = txnActualByCat.get(cat.id) ?? 0
-                let plannedTotal = 0
-                if (isSavings) {
-                  plannedTotal = savingsTotal
-                } else if (isNotDue) {
-                  plannedTotal = notDueInfo.amount
-                } else {
-                  for (const p of people) {
-                    const alloc = allocMap.get(`${cat.id}:${p.id}`)
-                    if (alloc) plannedTotal += parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
-                  }
-                  if (plannedTotal === 0) plannedTotal = fixedPlannedByCat.get(cat.id) ?? 0
-                }
-                const colorFn = isSavings ? savingsActualColor : actualColor
-                const color = isNotDue ? undefined : colorFn(actual, plannedTotal)
-                return (
-                  <TableRow key={cat.id} hover>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        {cat.color && (
-                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: cat.color, flexShrink: 0 }} />
-                        )}
-                        {cat.name}
-                        {cat.isSystem && (
-                          <Chip label={t('global')} size="small" variant="outlined" sx={{ fontSize: '0.6rem', height: 16 }} />
-                        )}
-                        {isNotDue && (
-                          <Tooltip title={t('notDueTooltip', { date: notDueInfo.nextDue ? notDueInfo.nextDue.toLocaleDateString() : '' })}>
-                            <IconButton size="small" onClick={() => canEdit && setEditFixedExpense(notDueInfo.fixedExpense)}>
-                              <ErrorOutlineIcon sx={{ fontSize: 16 }} color="warning" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </TableCell>
-                    {people.map((p) => {
-                      if (isSavings) {
-                        const sv = savingsByPerson.get(p.id.toString())
-                        return (
-                          <TableCell key={p.id.toString()} align="right">
-                            {sv != null && sv > 0
-                              ? formatMoney(sv)
-                              : <Typography component="span" variant="body2" color="text.disabled">—</Typography>}
-                          </TableCell>
-                        )
-                      }
-                      const alloc = allocMap.get(`${cat.id}:${p.id}`)
-                      const fixedPersonAmt = fixedPlannedByPersonCat.get(`${cat.id}:${p.id}`)
-                      const val = alloc
-                        ? parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
-                        : undefined
-                      return (
-                        <TableCell key={p.id.toString()} align="right">
-                          {isFixedOnly ? (
-                            fixedPersonAmt != null
-                              ? <Typography variant="body2" color="text.secondary">{formatMoney(fixedPersonAmt)}</Typography>
-                              : <Typography component="span" variant="body2" color="text.disabled">—</Typography>
-                          ) : alloc ? (
-                            canEdit ? (
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
-                                <EditCell value={val} onSave={(amount) => handleUpsert(cat.id, p.id, amount, alloc)} />
-                                <IconButton size="small" onClick={() => handleUpsert(cat.id, p.id, null, alloc)}>
-                                  <ClearIcon sx={{ fontSize: 14 }} />
-                                </IconButton>
-                              </Box>
-                            ) : (
-                              <Typography variant="body2" sx={{ textAlign: 'right' }}>
-                                {val != null ? formatMoney(val) : '—'}
-                              </Typography>
-                            )
-                          ) : fixedPersonAmt != null ? (
-                            <Typography variant="body2" color="text.secondary">{formatMoney(fixedPersonAmt)}</Typography>
-                          ) : canEdit ? (
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
-                              <EditCell value={undefined} onSave={(amount) => handleUpsert(cat.id, p.id, amount, undefined)} />
-                            </Box>
-                          ) : (
-                            <Typography component="span" variant="body2" color="text.disabled">—</Typography>
-                          )}
-                        </TableCell>
-                      )
-                    })}
-                    <TableCell align="right">
-                      {plannedTotal > 0
-                        ? <Typography component="span" variant="body2" color={isNotDue ? 'text.disabled' : undefined}>{formatMoney(plannedTotal)}</Typography>
-                        : <Typography component="span" variant="body2" color="text.disabled">—</Typography>}
-                    </TableCell>
-                    <TableCell align="right" sx={{ color: actual < 0 ? 'success.main' : color }}>
-                      {actual > 0
-                        ? formatMoney(actual)
-                        : actual < 0
-                          ? `+${formatMoney(-actual)}`
-                          : <Typography component="span" variant="body2" color="text.disabled">—</Typography>}
-                    </TableCell>
-                    <TableCell align="right">
-                      {canEdit && !isSavings && !isFixedOnly && (
-                        <Tooltip title={t('removeRow')} placement="left">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleRemoveCategory(cat.id)}
-                            sx={{ opacity: 0.4, '&:hover': { opacity: 1 } }}
-                          >
-                            <DeleteOutlineIcon sx={{ fontSize: 15 }} />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+              {visibleCats.map((cat) => (
+                <CategoryTableRow
+                  key={cat.id}
+                  cat={cat}
+                  people={people}
+                  rowData={computeCategoryRow(cat, categoryRowContext)}
+                  allocMap={allocMap}
+                  fixedPlannedByPersonCat={fixedPlannedByPersonCat}
+                  savingsByPerson={savingsByPerson}
+                  canEdit={canEdit}
+                  currency={currency}
+                  locale={locale}
+                  formatMoney={formatMoney}
+                  onRemoveCategory={handleRemoveCategory}
+                  onUpsert={handleUpsert}
+                  onEditFixedExpense={setEditFixedExpense}
+                />
+              ))}
             </TableBody>
             <TableFooter>
               <TableRow sx={{ '& td': footerCellSx }}>
@@ -901,42 +537,12 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId, canEdit = true 
         />
       )}
 
-      {/* Plan summary */}
-      {totalCommitted > 0 && (
-        <Box mt={3}>
-          <Divider sx={{ mb: 2 }} />
-          <Typography variant="subtitle2" fontWeight={600} color="text.secondary" mb={1.5}>
-            {t('planSummary')}
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxWidth: 420 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="text.secondary">{t('plannedAllocations')}</Typography>
-              <Typography variant="body2" fontWeight={700} sx={{ ml: 2, whiteSpace: 'nowrap' }}>
-                {formatMoney(totalCommitted)}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="text.secondary">{t('remainder')}</Typography>
-              <Typography
-                variant="body2"
-                fontWeight={700}
-                sx={{ ml: 2, whiteSpace: 'nowrap' }}
-                color={remainder < 0 ? 'error.main' : 'success.main'}
-              >
-                {formatMoney(remainder)}
-              </Typography>
-            </Box>
-            {totalActualSpent > 0 && (
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary">{t('spent')}</Typography>
-                <Typography variant="body2" fontWeight={700} sx={{ ml: 2, whiteSpace: 'nowrap', color: spentColor(totalActualSpent, totalCommitted) }}>
-                  {formatMoney(totalActualSpent)}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        </Box>
-      )}
+      <PlanSummary
+        totalCommitted={totalCommitted}
+        remainder={remainder}
+        totalActualSpent={totalActualSpent}
+        formatMoney={formatMoney}
+      />
     </Box>
   )
 }

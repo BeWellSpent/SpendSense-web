@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { useTranslations } from 'next-intl'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/wellspent/v1/budget_connect'
@@ -8,8 +9,10 @@ import { PaymentType } from '@/gen/wellspent/v1/common_pb'
 import type { PaymentMethod } from '@/gen/wellspent/v1/budget_pb'
 import { useClient } from '@/hooks/useClient'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
-import { ColorPicker } from '@/components/ui/ColorPicker'
 import { logger } from '@/lib/logger'
+import { AddPaymentMethodDialog } from './paymentMethodsPanel/AddPaymentMethodDialog'
+import { DeactivateMethodDialog } from './paymentMethodsPanel/DeactivateMethodDialog'
+import { EditPaymentMethodDialog } from './paymentMethodsPanel/EditPaymentMethodDialog'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import List from '@mui/material/List'
@@ -18,32 +21,10 @@ import ListItemText from '@mui/material/ListItemText'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
-import Button from '@mui/material/Button'
-import TextField from '@mui/material/TextField'
-import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
-import InputLabel from '@mui/material/InputLabel'
-import FormControl from '@mui/material/FormControl'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import CircularProgress from '@mui/material/CircularProgress'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
-
-const PAYMENT_TYPE_KEYS: { value: PaymentType; key: string }[] = [
-  { value: PaymentType.CASH, key: 'cash' },
-  { value: PaymentType.CREDIT, key: 'credit' },
-  { value: PaymentType.DEBIT, key: 'debit' },
-  { value: PaymentType.DIGITAL_WALLET, key: 'digitalWallet' },
-  { value: PaymentType.BANK_TRANSFER, key: 'bankTransfer' },
-  { value: PaymentType.CRYPTO, key: 'crypto' },
-  { value: PaymentType.INVESTMENT, key: 'investment' },
-]
 
 interface Props {
   budgetProfileId: string
@@ -54,22 +35,11 @@ interface Props {
 export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId, canEdit = true }: Props) {
   const t = useTranslations('budget.paymentMethods')
   const { showError, showSuccess } = useSnackbar()
-  const theme = useTheme()
-  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+  const fullScreen = useIsMobile()
 
   const [addOpen, setAddOpen] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newType, setNewType] = useState<PaymentType>(PaymentType.DEBIT)
-  const [newPersonId, setNewPersonId] = useState<bigint>(0n)
-  const [newColor, setNewColor] = useState('')
-
   const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editAlias, setEditAlias] = useState('')
-  const [editColor, setEditColor] = useState('')
-
   const [deletingMethod, setDeletingMethod] = useState<PaymentMethod | null>(null)
-  const [replacementId, setReplacementId] = useState('')
 
   const client = useClient(BudgetService)
 
@@ -103,26 +73,16 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId, canEdit =
       client.deletePaymentMethod(vars),
   })
 
-  async function handleCreate() {
+  async function handleCreate(name: string, type: PaymentType, personId: bigint, color: string) {
     try {
-      await doCreate({ name: newName, type: newType, budgetPersonId: newPersonId, color: newColor })
-      logger.info('paymentMethod.create', { name: newName, budgetPersonId: newPersonId.toString() })
-      showSuccess(`Payment method "${newName}" added`)
-      setNewName('')
-      setNewPersonId(0n)
-      setNewColor('')
+      await doCreate({ name, type, budgetPersonId: personId, color })
+      logger.info('paymentMethod.create', { name, budgetPersonId: personId.toString() })
+      showSuccess(`Payment method "${name}" added`)
       setAddOpen(false)
       refetch()
     } catch (err) {
       showError(err)
     }
-  }
-
-  function openEdit(method: PaymentMethod) {
-    setEditingMethod(method)
-    setEditName(method.name)
-    setEditAlias(method.alias)
-    setEditColor(method.color)
   }
 
   async function openDelete(method: PaymentMethod) {
@@ -141,10 +101,9 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId, canEdit =
       return
     }
     setDeletingMethod(method)
-    setReplacementId('')
   }
 
-  async function handleDelete() {
+  async function handleDelete(replacementId: string) {
     if (!deletingMethod || !replacementId) return
     try {
       await doDelete({ id: deletingMethod.id, replacementId, budgetProfileId })
@@ -157,12 +116,12 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId, canEdit =
     }
   }
 
-  async function handleUpdate() {
+  async function handleUpdate(name: string, alias: string, color: string) {
     if (!editingMethod) return
     try {
-      await doUpdate({ id: editingMethod.id, name: editName, color: editColor, alias: editAlias })
-      logger.info('paymentMethod.update', { id: editingMethod.id, name: editName, alias: editAlias })
-      showSuccess(`"${editAlias || editName}" updated`)
+      await doUpdate({ id: editingMethod.id, name, color, alias })
+      logger.info('paymentMethod.update', { id: editingMethod.id, name, alias })
+      showSuccess(`"${alias || name}" updated`)
       setEditingMethod(null)
       refetch()
     } catch (err) {
@@ -204,7 +163,7 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId, canEdit =
                   canEdit ? (
                     <Box>
                       <Tooltip title={t('editTooltip')}>
-                        <IconButton size="small" onClick={() => openEdit(m)}>
+                        <IconButton size="small" onClick={() => setEditingMethod(m)}>
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -244,160 +203,32 @@ export function PaymentMethodsPanel({ budgetProfileId, budgetPeriodId, canEdit =
         </List>
       )}
 
-      {/* Add dialog */}
-      <Dialog
+      <AddPaymentMethodDialog
         open={addOpen}
-        onClose={() => { setAddOpen(false); setNewName(''); setNewPersonId(0n); setNewColor('') }}
-        maxWidth="xs"
-        fullWidth
+        people={people}
+        isCreating={isCreating}
         fullScreen={fullScreen}
-      >
-        <DialogTitle>{t('addDialog.title')}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField
-              label={t('addDialog.name')}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              fullWidth
-              placeholder={t('addDialog.namePlaceholder')}
-            />
-            <TextField
-              select
-              label={t('addDialog.type')}
-              value={newType}
-              onChange={(e) => setNewType(Number(e.target.value) as PaymentType)}
-              fullWidth
-            >
-              {PAYMENT_TYPE_KEYS.map((pt) => (
-                <MenuItem key={pt.value} value={pt.value}>{t(`types.${pt.key}`)}</MenuItem>
-              ))}
-            </TextField>
-            <FormControl fullWidth size="small" required>
-              <InputLabel>{t('addDialog.owner')}</InputLabel>
-              <Select
-                label={t('addDialog.owner')}
-                value={newPersonId.toString()}
-                onChange={(e) => setNewPersonId(BigInt(e.target.value))}
-                displayEmpty
-              >
-                <MenuItem value="0" disabled><em>{t('addDialog.selectPerson')}</em></MenuItem>
-                {people.map((p) => (
-                  <MenuItem key={p.id.toString()} value={p.id.toString()}>
-                    {p.userName}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Box>
-              <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                {t('addDialog.colorOptional')}
-              </Typography>
-              <ColorPicker value={newColor} onChange={setNewColor} />
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { setAddOpen(false); setNewName(''); setNewPersonId(0n); setNewColor('') }} color="inherit">{t('addDialog.cancel')}</Button>
-          <Button variant="contained" onClick={handleCreate} disabled={!newName.trim() || newPersonId === 0n || isCreating}>
-            {isCreating ? t('addDialog.adding') : t('addDialog.add')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onCancel={() => setAddOpen(false)}
+        onConfirm={handleCreate}
+      />
 
-      {/* Delete dialog */}
-      <Dialog
-        open={deletingMethod !== null}
-        onClose={() => setDeletingMethod(null)}
-        maxWidth="xs"
-        fullWidth
+      <DeactivateMethodDialog
+        method={deletingMethod}
+        methods={methods}
+        personMap={personMap}
+        isDeleting={isDeleting}
         fullScreen={fullScreen}
-      >
-        <DialogTitle>{t('deactivateDialog.title')}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              {t('deactivateDialog.body', { name: deletingMethod ? (deletingMethod.alias || deletingMethod.name) : '' })}
-            </Typography>
-            <TextField
-              select
-              label={t('deactivateDialog.reassignTo')}
-              value={replacementId}
-              onChange={(e) => setReplacementId(e.target.value)}
-              fullWidth
-            >
-              {methods
-                .filter((m) => m.id !== deletingMethod?.id)
-                .map((m) => {
-                  const owner = m.budgetPersonId !== 0n ? personMap.get(m.budgetPersonId.toString()) : undefined
-                  return (
-                    <MenuItem key={m.id} value={m.id}>
-                      {m.alias || m.name}{owner ? ` · ${owner}` : ''}
-                    </MenuItem>
-                  )
-                })}
-            </TextField>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeletingMethod(null)} color="inherit">{t('deactivateDialog.cancel')}</Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={handleDelete}
-            disabled={!replacementId || isDeleting}
-          >
-            {isDeleting ? t('deactivateDialog.deactivating') : t('deactivateDialog.deactivate')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onCancel={() => setDeletingMethod(null)}
+        onConfirm={handleDelete}
+      />
 
-      {/* Edit dialog (rename + color) */}
-      <Dialog
-        open={editingMethod !== null}
-        onClose={() => setEditingMethod(null)}
-        maxWidth="xs"
-        fullWidth
+      <EditPaymentMethodDialog
+        method={editingMethod}
+        isSaving={isUpdating}
         fullScreen={fullScreen}
-      >
-        <DialogTitle>{t('editDialog.title')}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField
-              label={t('editDialog.alias')}
-              value={editAlias}
-              onChange={(e) => setEditAlias(e.target.value)}
-              fullWidth
-              placeholder={editName}
-              helperText={t('editDialog.aliasHint')}
-            />
-            <TextField
-              label={t('editDialog.name')}
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              fullWidth
-              placeholder={t('editDialog.namePlaceholder')}
-              helperText={t('editDialog.nameHint')}
-            />
-            <Box>
-              <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                {t('editDialog.colorOptional')}
-              </Typography>
-              <ColorPicker value={editColor} onChange={setEditColor} />
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditingMethod(null)} color="inherit">{t('editDialog.cancel')}</Button>
-          <Button
-            variant="contained"
-            onClick={handleUpdate}
-            disabled={!editName.trim() || isUpdating}
-          >
-            {isUpdating ? t('editDialog.saving') : t('editDialog.save')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onCancel={() => setEditingMethod(null)}
+        onConfirm={handleUpdate}
+      />
     </Box>
   )
 }

@@ -2,14 +2,15 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useTranslations } from 'next-intl'
 import { BudgetService } from '@/gen/wellspent/v1/budget_connect'
-import type { BudgetPerson, PaymentMethod } from '@/gen/wellspent/v1/budget_pb'
+import type { BudgetPerson } from '@/gen/wellspent/v1/budget_pb'
 import { BudgetRole } from '@/gen/wellspent/v1/common_pb'
 import { useClient } from '@/hooks/useClient'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
-import { ColorPicker } from '@/components/ui/ColorPicker'
 import { logger } from '@/lib/logger'
+import { useRoleLabel } from './peoplePanel/useRoleLabel'
+import { EditColorDialog } from './peoplePanel/EditColorDialog'
+import { RemovePersonDialog } from './peoplePanel/RemovePersonDialog'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import List from '@mui/material/List'
@@ -21,34 +22,16 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Divider from '@mui/material/Divider'
 import CircularProgress from '@mui/material/CircularProgress'
-import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
-import DialogActions from '@mui/material/DialogActions'
 import Chip from '@mui/material/Chip'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import FormControl from '@mui/material/FormControl'
-import InputLabel from '@mui/material/InputLabel'
-import Alert from '@mui/material/Alert'
 import DeleteIcon from '@mui/icons-material/Delete'
 import PaletteIcon from '@mui/icons-material/Palette'
 
 interface Props {
   budgetProfileId: string
   canManageUsers?: boolean
-}
-
-function useRoleLabel() {
-  const t = useTranslations('budget.invites.roles')
-  return (role: BudgetRole) => {
-    switch (role) {
-      case BudgetRole.ADMIN: return t('admin')
-      case BudgetRole.COLLABORATOR: return t('collaborator')
-      case BudgetRole.VIEWER: return t('viewer')
-      default: return t('unspecified')
-    }
-  }
 }
 
 export function PeoplePanel({ budgetProfileId, canManageUsers = true }: Props) {
@@ -59,11 +42,7 @@ export function PeoplePanel({ budgetProfileId, canManageUsers = true }: Props) {
   const [name, setName] = useState('')
   const [pendingNames, setPendingNames] = useState<string[]>([])
   const [removingPerson, setRemovingPerson] = useState<BudgetPerson | null>(null)
-  const [needsReplacement, setNeedsReplacement] = useState(false)
-  const [replacementPersonId, setReplacementPersonId] = useState<bigint>(0n)
-  const [replacementPmId, setReplacementPmId] = useState<string>('')
   const [editingPerson, setEditingPerson] = useState<BudgetPerson | null>(null)
-  const [editColor, setEditColor] = useState('')
 
   const { data: profileData } = useQuery({
     queryKey: ['budget-profile', budgetProfileId],
@@ -142,52 +121,30 @@ export function PeoplePanel({ budgetProfileId, canManageUsers = true }: Props) {
     }
   }
 
-  function openRemoveDialog(person: BudgetPerson) {
-    const hasIncome = (incomeData?.sources ?? []).some((s) => s.budgetPersonId === person.id)
-    const hasPMs = (pmData?.methods ?? []).some((pm) => pm.budgetPersonId === person.id)
-    setRemovingPerson(person)
-    setNeedsReplacement(hasIncome || hasPMs)
-    setReplacementPersonId(0n)
-    setReplacementPmId('')
-  }
-
-  function closeRemoveDialog() {
-    setRemovingPerson(null)
-    setNeedsReplacement(false)
-    setReplacementPersonId(0n)
-    setReplacementPmId('')
-  }
-
-  async function handleRemove() {
+  async function handleRemove(replacementPersonId: bigint, replacementPmId: string) {
     if (!removingPerson) return
-    if (needsReplacement && (replacementPersonId === 0n || !replacementPmId)) return
     try {
       await doRemove({
         personId: removingPerson.id,
-        replacementPersonId: needsReplacement ? replacementPersonId : 0n,
-        replacementPaymentMethodId: needsReplacement ? replacementPmId : '',
+        replacementPersonId,
+        replacementPaymentMethodId: replacementPmId,
       })
       logger.info('budget.people.remove', {
         budgetProfileId,
         personId: removingPerson.id.toString(),
-        withReplacement: needsReplacement,
+        withReplacement: replacementPersonId !== 0n,
       })
       showSuccess(`${removingPerson.userName} removed`)
-      closeRemoveDialog()
+      setRemovingPerson(null)
     } catch (err) {
       showError(err)
     }
   }
 
-  function openEditColor(person: BudgetPerson) {
-    setEditingPerson(person)
-    setEditColor(person.color)
-  }
-
-  async function handleUpdateColor() {
+  async function handleUpdateColor(color: string) {
     if (!editingPerson) return
     try {
-      await doUpdatePerson({ id: editingPerson.id, budgetProfileId, color: editColor })
+      await doUpdatePerson({ id: editingPerson.id, budgetProfileId, color })
       logger.info('budget.people.update_color', { budgetProfileId, personId: editingPerson.id.toString() })
       showSuccess(`Color updated for ${editingPerson.userName}`)
       setEditingPerson(null)
@@ -207,11 +164,6 @@ export function PeoplePanel({ budgetProfileId, canManageUsers = true }: Props) {
   }
 
   const people = data?.people ?? []
-  const replacementPeople = people.filter((p) => removingPerson && p.id !== removingPerson.id)
-  const replacementPersonPMs: PaymentMethod[] = (pmData?.methods ?? []).filter(
-    (pm) => pm.budgetPersonId === replacementPersonId
-  )
-  const canConfirmRemoval = !needsReplacement || (replacementPersonId !== 0n && replacementPmId !== '')
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -232,11 +184,11 @@ export function PeoplePanel({ budgetProfileId, canManageUsers = true }: Props) {
                   secondaryAction={
                     canManageUsers ? (
                       <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        <IconButton size="small" onClick={() => openEditColor(p)} aria-label="set color">
+                        <IconButton size="small" onClick={() => setEditingPerson(p)} aria-label="set color">
                           <PaletteIcon fontSize="small" sx={p.color ? { color: p.color } : {}} />
                         </IconButton>
                         {!isOwner && (
-                          <IconButton size="small" onClick={() => openRemoveDialog(p)} aria-label="remove">
+                          <IconButton size="small" onClick={() => setRemovingPerson(p)} aria-label="remove">
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         )}
@@ -326,101 +278,22 @@ export function PeoplePanel({ budgetProfileId, canManageUsers = true }: Props) {
         </>
       )}
 
-      {/* Edit color dialog */}
-      <Dialog open={editingPerson !== null} onClose={() => setEditingPerson(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Color for {editingPerson?.userName}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 1 }}>
-            <ColorPicker value={editColor} onChange={setEditColor} />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditingPerson(null)} color="inherit">Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleUpdateColor}
-            disabled={isUpdatingPerson}
-          >
-            {isUpdatingPerson ? 'Saving…' : 'Save'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <EditColorDialog
+        person={editingPerson}
+        isSaving={isUpdatingPerson}
+        onCancel={() => setEditingPerson(null)}
+        onConfirm={handleUpdateColor}
+      />
 
-      {/* Remove dialog */}
-      <Dialog open={removingPerson !== null} onClose={closeRemoveDialog} maxWidth="xs" fullWidth>
-        <DialogTitle>Remove {removingPerson?.userName}</DialogTitle>
-        <DialogContent>
-          {needsReplacement ? (
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <Alert severity="warning" sx={{ fontSize: '0.8rem' }}>
-                This person has income sources or payment methods. Choose a replacement before removing.
-              </Alert>
-
-              <FormControl fullWidth size="small">
-                <InputLabel>Step 1 — Replacement person</InputLabel>
-                <Select
-                  label="Step 1 — Replacement person"
-                  value={replacementPersonId === 0n ? '' : replacementPersonId.toString()}
-                  onChange={(e) => {
-                    setReplacementPersonId(BigInt(e.target.value as string))
-                    setReplacementPmId('')
-                  }}
-                >
-                  {replacementPeople.length === 0 ? (
-                    <MenuItem disabled value="">No other people in this budget</MenuItem>
-                  ) : (
-                    replacementPeople.map((p) => (
-                      <MenuItem key={p.id.toString()} value={p.id.toString()}>
-                        {p.userName}
-                      </MenuItem>
-                    ))
-                  )}
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth size="small" disabled={replacementPersonId === 0n}>
-                <InputLabel>Step 2 — Replacement payment method</InputLabel>
-                <Select
-                  label="Step 2 — Replacement payment method"
-                  value={replacementPmId}
-                  onChange={(e) => setReplacementPmId(e.target.value as string)}
-                >
-                  {replacementPersonPMs.length === 0 ? (
-                    <MenuItem disabled value="">
-                      {replacementPersonId === 0n ? 'Select a person first' : 'This person has no payment methods'}
-                    </MenuItem>
-                  ) : (
-                    replacementPersonPMs.map((pm) => (
-                      <MenuItem key={pm.id} value={pm.id}>{pm.alias || pm.name}</MenuItem>
-                    ))
-                  )}
-                </Select>
-              </FormControl>
-
-              {replacementPersonId !== 0n && replacementPersonPMs.length === 0 && (
-                <Alert severity="error" sx={{ fontSize: '0.8rem' }}>
-                  This person has no payment methods. Choose a different replacement.
-                </Alert>
-              )}
-            </Stack>
-          ) : (
-            <Typography sx={{ mt: 1 }}>
-              Remove <strong>{removingPerson?.userName}</strong> from this budget?
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeRemoveDialog} color="inherit">Cancel</Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={handleRemove}
-            disabled={!canConfirmRemoval || isRemoving}
-          >
-            {isRemoving ? 'Removing…' : 'Remove'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <RemovePersonDialog
+        person={removingPerson}
+        people={people}
+        paymentMethods={pmData?.methods ?? []}
+        incomeSources={incomeData?.sources ?? []}
+        isRemoving={isRemoving}
+        onCancel={() => setRemovingPerson(null)}
+        onConfirm={handleRemove}
+      />
     </Box>
   )
 }

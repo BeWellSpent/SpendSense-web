@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { BudgetService } from '@/gen/wellspent/v1/budget_connect'
@@ -19,8 +20,6 @@ import FormHelperText from '@mui/material/FormHelperText'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 
 interface Props {
   budgetProfileId: string
@@ -41,8 +40,7 @@ function inferFrequencyLabel(count: number): string {
 export function AddSavingsDialog({ budgetProfileId, activePeriodStart, onClose, onDone }: Props) {
   const t = useTranslations('budget.savings.addDialog')
   const { showError } = useSnackbar()
-  const theme = useTheme()
-  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+  const fullScreen = useIsMobile()
   const queryClient = useQueryClient()
 
   const [name, setName] = useState('')

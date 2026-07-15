@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { usePlaidLink } from 'react-plaid-link'
 import { useTranslations } from 'next-intl'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -25,8 +26,6 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import LinkOffIcon from '@mui/icons-material/LinkOff'
 
@@ -128,8 +127,7 @@ function ConnectionRow({
 
 export function PlaidSection() {
   const t = useTranslations('settings.plaid')
-  const theme = useTheme()
-  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+  const fullScreen = useIsMobile()
   const { showError } = useSnackbar()
   const queryClient = useQueryClient()
 

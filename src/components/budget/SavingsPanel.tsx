@@ -7,8 +7,10 @@ import { BudgetService } from '@/gen/wellspent/v1/budget_connect'
 import type { SavingsSource } from '@/gen/wellspent/v1/budget_pb'
 import { RecurringType } from '@/gen/wellspent/v1/common_pb'
 import { useClient } from '@/hooks/useClient'
+import { useCurrency } from '@/hooks/useCurrency'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { logger } from '@/lib/logger'
+import { formatMoney, formatMoneyFromNumber } from '@/lib/format'
 import { AddSavingsDialog } from './modals/AddSavingsDialog'
 import { EditSavingsModal } from './modals/EditSavingsModal'
 import Box from '@mui/material/Box'
@@ -33,11 +35,6 @@ interface Props {
   canEdit?: boolean
 }
 
-function formatMoney(units: bigint, nanos: number): string {
-  const total = Number(units) + nanos / 1e9
-  return total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
-
 const FREQ_KEY: Record<RecurringType, string> = {
   [RecurringType.UNSPECIFIED]: '',
   [RecurringType.ONE_OFF]: 'oneOff',
@@ -51,6 +48,7 @@ const FREQ_KEY: Record<RecurringType, string> = {
 export function SavingsPanel({ budgetProfileId, activePeriodStart, addOpen = false, onAddClose, canEdit = true }: Props) {
   const t = useTranslations('budget.savings')
   const { showError } = useSnackbar()
+  const { currency, locale } = useCurrency()
   const client = useClient(BudgetService)
   const [editingSource, setEditingSource] = useState<SavingsSource | null>(null)
   const queryClient = useQueryClient()
@@ -107,7 +105,7 @@ export function SavingsPanel({ budgetProfileId, activePeriodStart, addOpen = fal
           )}
         </Box>
         <Typography variant="subtitle2" color="info.main">
-          {savingsTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+          {formatMoneyFromNumber(savingsTotal, currency, locale)}
         </Typography>
       </Box>
       {sources.length === 0 ? (
@@ -157,12 +155,12 @@ export function SavingsPanel({ budgetProfileId, activePeriodStart, addOpen = fal
                   }
                   secondary={
                     <>
-                      {formatMoney(src.amount?.units ?? 0n, src.amount?.nanos ?? 0)}
+                      {formatMoney(src.amount?.units ?? 0n, src.amount?.nanos ?? 0, currency, locale)}
                       {src.isTaxReserve && src.federalAmount && src.stateAmount && (
-                        <> · {t('federal')} {formatMoney(src.federalAmount.units, src.federalAmount.nanos)} · {t('state')} {formatMoney(src.stateAmount.units, src.stateAmount.nanos)}</>
+                        <> · {t('federal')} {formatMoney(src.federalAmount.units, src.federalAmount.nanos, currency, locale)} · {t('state')} {formatMoney(src.stateAmount.units, src.stateAmount.nanos, currency, locale)}</>
                       )}
                       {src.isTaxReserve && src.federalAmount && !src.stateAmount && (
-                        <> · {t('federal')} {formatMoney(src.federalAmount.units, src.federalAmount.nanos)}</>
+                        <> · {t('federal')} {formatMoney(src.federalAmount.units, src.federalAmount.nanos, currency, locale)}</>
                       )}
                       {personName && <> · {personName}</>}
                       {pmName && <> · {pmName}</>}

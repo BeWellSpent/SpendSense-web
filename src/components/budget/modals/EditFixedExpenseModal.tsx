@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { Timestamp } from '@bufbuild/protobuf'
@@ -21,8 +22,6 @@ import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 
 interface Props {
   budgetProfileId: string
@@ -94,8 +93,7 @@ function frequencyFieldsFor(unit: FrequencyUnitUI, count: number, dayOfWeek: num
 export function EditFixedExpenseModal({ budgetProfileId, fixedExpense, onClose, onDone }: Props) {
   const t = useTranslations('budget.fixedExpense')
   const { showError } = useSnackbar()
-  const theme = useTheme()
-  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+  const fullScreen = useIsMobile()
   const client = useClient(BudgetService)
 
   const [name, setName] = useState(fixedExpense.name)

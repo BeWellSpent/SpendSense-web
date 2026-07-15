@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/wellspent/v1/budget_connect'
 import type { IncomeSource } from '@/gen/wellspent/v1/budget_pb'
@@ -20,8 +21,6 @@ import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import InputLabel from '@mui/material/InputLabel'
 import FormControl from '@mui/material/FormControl'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 
 interface Props {
   budgetProfileId: string
@@ -33,8 +32,7 @@ interface Props {
 
 export function EditIncomeModal({ budgetProfileId, source, showBeforeTax, onClose, onDone }: Props) {
   const { showError } = useSnackbar()
-  const theme = useTheme()
-  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+  const fullScreen = useIsMobile()
 
   const [name, setName] = useState(source.name)
   const [amount, setAmount] = useState(() => {

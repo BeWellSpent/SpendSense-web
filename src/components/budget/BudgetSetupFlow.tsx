@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { useTranslations } from 'next-intl'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/wellspent/v1/budget_connect'
@@ -9,8 +10,6 @@ import { BudgetCycle } from '@/gen/wellspent/v1/common_pb'
 import { useClient } from '@/hooks/useClient'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { logger } from '@/lib/logger'
-import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -37,8 +36,7 @@ interface Props {
 export function BudgetSetupFlow({ open, onClose, onComplete }: Props) {
   const t = useTranslations('budget.setup')
   const { showError, showSuccess } = useSnackbar()
-  const theme = useTheme()
-  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+  const fullScreen = useIsMobile()
   const [step, setStep] = useState(0)
   const [profileId, setProfileId] = useState<string | null>(null)
   const [budgetName, setBudgetName] = useState('')

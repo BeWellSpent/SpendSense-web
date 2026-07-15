@@ -6,8 +6,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BudgetService } from '@/gen/wellspent/v1/budget_connect'
 import type { IncomeSource } from '@/gen/wellspent/v1/budget_pb'
 import { useClient } from '@/hooks/useClient'
+import { useCurrency } from '@/hooks/useCurrency'
 import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { logger } from '@/lib/logger'
+import { formatMoney, formatMoneyFromNumber } from '@/lib/format'
 import { EditIncomeModal } from './modals/EditIncomeModal'
 import { AddIncomeDialog } from './modals/AddIncomeDialog'
 import Box from '@mui/material/Box'
@@ -29,14 +31,10 @@ interface Props {
   canEdit?: boolean
 }
 
-function formatMoney(units: bigint, nanos: number): string {
-  const total = Number(units) + nanos / 1e9
-  return total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
-
 export function IncomePanel({ budgetProfileId, showBeforeTax, addOpen = false, onAddClose, canEdit = true }: Props) {
   const t = useTranslations('budget.income')
   const { showError } = useSnackbar()
+  const { currency, locale } = useCurrency()
   const client = useClient(BudgetService)
   const queryClient = useQueryClient()
   const [editingSource, setEditingSource] = useState<IncomeSource | null>(null)
@@ -94,7 +92,7 @@ export function IncomePanel({ budgetProfileId, showBeforeTax, addOpen = false, o
           )}
         </Box>
         <Typography variant="subtitle2" color="success.main">
-          {total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} {t('perMonth')}
+          {formatMoneyFromNumber(total, currency, locale)} {t('perMonth')}
         </Typography>
       </Box>
       {sources.length === 0 ? (
@@ -126,7 +124,7 @@ export function IncomePanel({ budgetProfileId, showBeforeTax, addOpen = false, o
                   primary={src.name}
                   secondary={
                     <>
-                      {formatMoney(src.defaultAmount?.units ?? 0n, src.defaultAmount?.nanos ?? 0)}
+                      {formatMoney(src.defaultAmount?.units ?? 0n, src.defaultAmount?.nanos ?? 0, currency, locale)}
                       {personName && <> · {personName}</>}
                     </>
                   }
