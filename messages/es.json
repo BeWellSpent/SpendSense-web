@@ -33,7 +33,20 @@
       "signIn": "Iniciar sesión"
     },
     "language": "Idioma",
-    "currency": "Moneda"
+    "currency": "Moneda",
+    "banner": {
+      "message": "Verifica tu dirección de correo electrónico para proteger tu cuenta.",
+      "resend": "Reenviar correo",
+      "sending": "Enviando…",
+      "sent": "Correo de verificación enviado"
+    },
+    "verifyEmail": {
+      "verifying": "Verificando tu correo electrónico…",
+      "success": "Tu dirección de correo electrónico ha sido verificada.",
+      "error": "Este enlace de verificación no es válido o ha expirado.",
+      "goToBudgets": "Ir a tus presupuestos",
+      "signIn": "Ir a iniciar sesión"
+    }
   },
   "settings": {
     "title": "Perfil",

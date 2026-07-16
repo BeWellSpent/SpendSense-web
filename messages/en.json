@@ -33,7 +33,20 @@
       "signIn": "Sign in"
     },
     "language": "Language",
-    "currency": "Currency"
+    "currency": "Currency",
+    "banner": {
+      "message": "Please verify your email address to secure your account.",
+      "resend": "Resend email",
+      "sending": "Sending…",
+      "sent": "Verification email sent"
+    },
+    "verifyEmail": {
+      "verifying": "Verifying your email…",
+      "success": "Your email address has been verified.",
+      "error": "This verification link is invalid or has expired.",
+      "goToBudgets": "Go to your budgets",
+      "signIn": "Go to sign in"
+    }
   },
   "settings": {
     "title": "Profile",
