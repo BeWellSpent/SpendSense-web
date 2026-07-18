@@ -268,7 +268,13 @@
       "markForReview": "Marcar para revisión",
       "filter": {
         "spentOnly": "Solo gastos",
-        "exceededOnly": "Solo excedido"
+        "exceededOnly": "Solo excedido",
+        "excludedOnly": "Solo excluidas"
+      },
+      "exclude": {
+        "exclude": "Excluir del total",
+        "unexclude": "Incluir en el total",
+        "incomeAlwaysExcluded": "Las transacciones de ingresos siempre se excluyen del total"
       }
     },
     "markForReview": {

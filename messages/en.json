@@ -268,7 +268,13 @@
       "markForReview": "Flag for review",
       "filter": {
         "spentOnly": "Spent only",
-        "exceededOnly": "Exceeded only"
+        "exceededOnly": "Exceeded only",
+        "excludedOnly": "Excluded only"
+      },
+      "exclude": {
+        "exclude": "Exclude from totals",
+        "unexclude": "Include in totals",
+        "incomeAlwaysExcluded": "Income transactions are always excluded from totals"
       }
     },
     "markForReview": {

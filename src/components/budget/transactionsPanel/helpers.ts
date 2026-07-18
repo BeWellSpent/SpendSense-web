@@ -28,6 +28,13 @@ export function txAmount(t: Transaction): number {
   return Number(t.amount?.units ?? 0n) + (t.amount?.nanos ?? 0) / 1e9
 }
 
+// A transaction is left out of totals if manually flagged, or if it's the
+// Income category — payroll deposits (auto-tagged by Plaid) and any manually
+// categorized income should never count toward the spending total.
+export function isTransactionExcluded(t: Transaction, incomeCategoryId?: number): boolean {
+  return t.isExcluded || (incomeCategoryId != null && t.categoryId === incomeCategoryId)
+}
+
 export function txPlannedAmount(t: Transaction): number {
   return Number(t.plannedAmount?.units ?? 0n) + (t.plannedAmount?.nanos ?? 0) / 1e9
 }

@@ -26,6 +26,7 @@ import {
   matchesSearch,
   compareTransactions,
   groupTransactionsByDay,
+  isTransactionExcluded,
 } from './helpers'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -48,6 +49,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
+import VisibilityIcon from '@mui/icons-material/Visibility'
 
 export interface TransactionTableProps {
   transactions: Transaction[]
@@ -55,6 +58,7 @@ export interface TransactionTableProps {
   isEditable: boolean
   isFixed: boolean
   savingsCategoryId?: number
+  incomeCategoryId?: number
   budgetPeriodId: string
   budgetProfileId: string
   label: string
@@ -66,9 +70,11 @@ export interface TransactionTableProps {
   searchQuery?: string
   spentOnly?: boolean
   exceededOnly?: boolean
+  excludedOnly?: boolean
   overBudgetTxIds?: Set<string>
   onToggleSpentOnly?: () => void
   onToggleExceededOnly?: () => void
+  onToggleExcludedOnly?: () => void
   onDeleted: () => void
   onEdit: (t: Transaction) => void
   onEditFixedExpense?: (fe: FixedExpense) => void
@@ -76,9 +82,9 @@ export interface TransactionTableProps {
 }
 
 export function TransactionTable({
-  transactions, isLoading, isEditable, isFixed, savingsCategoryId, budgetPeriodId, budgetProfileId, label,
+  transactions, isLoading, isEditable, isFixed, savingsCategoryId, incomeCategoryId, budgetPeriodId, budgetProfileId, label,
   categoryMap, methodMap, personMap, notDueFixedExpenses = [], fixedExpenseMap, searchQuery = '', spentOnly = false,
-  exceededOnly = false, overBudgetTxIds, onToggleSpentOnly, onToggleExceededOnly,
+  exceededOnly = false, excludedOnly = false, overBudgetTxIds, onToggleSpentOnly, onToggleExceededOnly, onToggleExcludedOnly,
   onDeleted, onEdit, onEditFixedExpense, onRefresh,
 }: TransactionTableProps) {
   const t = useTranslations('budget.transactions')
@@ -103,6 +109,10 @@ export function TransactionTable({
   const { mutateAsync: doUnmark, isPending: unmarkPending } = useMutation({
     mutationFn: (tx: Transaction) => client.unmarkTransactionAsPaid({ id: tx.id, budgetPeriodId }),
   })
+  const { mutateAsync: doSetExcluded, isPending: setExcludedPending } = useMutation({
+    mutationFn: (args: { id: string; excluded: boolean }) =>
+      client.setTransactionExcluded({ id: args.id, budgetPeriodId, excluded: args.excluded }),
+  })
 
   async function handleDeleteFixedExpense(fe: FixedExpense) {
     try {
@@ -119,6 +129,17 @@ export function TransactionTable({
     try {
       await doUnmark(tx)
       logger.info('transaction.unmarkAsPaid', { id: tx.id })
+      queryClient.invalidateQueries({ queryKey: ['transactions', budgetPeriodId] })
+      onRefresh()
+    } catch (err) {
+      showError(err)
+    }
+  }
+
+  async function handleToggleExcluded(tx: Transaction) {
+    try {
+      await doSetExcluded({ id: tx.id, excluded: !tx.isExcluded })
+      logger.info('transaction.setExcluded', { id: tx.id, excluded: !tx.isExcluded })
       queryClient.invalidateQueries({ queryKey: ['transactions', budgetPeriodId] })
       onRefresh()
     } catch (err) {
@@ -153,6 +174,9 @@ export function TransactionTable({
   const isSavingsRow = (tx: Transaction) =>
     savingsCategoryId != null && tx.categoryId === savingsCategoryId
 
+  const isIncomeRow = (tx: Transaction) =>
+    incomeCategoryId != null && tx.categoryId === incomeCategoryId
+
   const isRowEditable = (tx: Transaction) => isEditable && !isSavingsRow(tx)
 
   const canMarkPaid = (tx: Transaction) =>
@@ -161,6 +185,7 @@ export function TransactionTable({
   const filteredTransactions = transactions.filter((tx) => {
     if (!isFixed && spentOnly && txAmount(tx) <= 0) return false
     if (!isFixed && exceededOnly && overBudgetTxIds && !overBudgetTxIds.has(tx.id)) return false
+    if (excludedOnly && !isTransactionExcluded(tx, incomeCategoryId)) return false
     return matchesSearch(tx.name, tx.categoryId, tx.paymentMethodId, searchQuery, categoryMap, methodMap, personMap)
   })
   const filteredNotDue = notDueFixedExpenses.filter((fe) =>
@@ -259,6 +284,18 @@ export function TransactionTable({
                     </IconButton>
                   </Tooltip>
                 )}
+                <Tooltip title={isIncomeRow(tx) ? t('exclude.incomeAlwaysExcluded') : (tx.isExcluded ? t('exclude.unexclude') : t('exclude.exclude'))}>
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleToggleExcluded(tx)}
+                      disabled={isIncomeRow(tx) || setExcludedPending}
+                      color={tx.isExcluded || isIncomeRow(tx) ? 'warning' : 'default'}
+                    >
+                      {tx.isExcluded || isIncomeRow(tx) ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
                 {isRowEditable(tx) && (
                   <>
                     <IconButton size="small" onClick={() => onEdit(tx)}><EditIcon fontSize="small" /></IconButton>
@@ -332,7 +369,7 @@ export function TransactionTable({
 
     return (
       <>
-        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
           <TextField
             select
             size="small"
@@ -378,6 +415,15 @@ export function TransactionTable({
               </ToggleButton>
             </>
           )}
+          <ToggleButton
+            value="excludedOnly"
+            selected={excludedOnly}
+            onChange={() => onToggleExcludedOnly?.()}
+            size="small"
+            sx={{ alignSelf: 'center', whiteSpace: 'nowrap' }}
+          >
+            {t('filter.excludedOnly')}
+          </ToggleButton>
         </Box>
         <Box sx={{ overflowX: 'auto' }}>
           <Table size="small">
@@ -532,6 +578,18 @@ export function TransactionTable({
                   </IconButton>
                 </Tooltip>
               )}
+              <Tooltip title={isIncomeRow(tx) ? t('exclude.incomeAlwaysExcluded') : (tx.isExcluded ? t('exclude.unexclude') : t('exclude.exclude'))}>
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleToggleExcluded(tx)}
+                    disabled={isIncomeRow(tx) || setExcludedPending}
+                    color={tx.isExcluded || isIncomeRow(tx) ? 'warning' : 'default'}
+                  >
+                    {tx.isExcluded || isIncomeRow(tx) ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
+                  </IconButton>
+                </span>
+              </Tooltip>
               {isRowEditable(tx) && (
                 <>
                   <IconButton size="small" onClick={() => onEdit(tx)}><EditIcon fontSize="small" /></IconButton>

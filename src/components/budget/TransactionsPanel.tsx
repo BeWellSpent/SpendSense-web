@@ -12,7 +12,7 @@ import { useClient } from '@/hooks/useClient'
 import { useCurrency } from '@/hooks/useCurrency'
 import { useViewPreference } from '@/hooks/useViewPreference'
 import { formatMoneyFromNumber } from '@/lib/format'
-import { txAmount, txPlannedAmount, fixedExpensePlannedAmount } from './transactionsPanel/helpers'
+import { txAmount, txPlannedAmount, fixedExpensePlannedAmount, isTransactionExcluded } from './transactionsPanel/helpers'
 import { TransactionTable } from './transactionsPanel/TransactionTable'
 import { AddTransactionModal } from './modals/AddTransactionModal'
 import { EditTransactionModal } from './modals/EditTransactionModal'
@@ -56,6 +56,7 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
   const [searchQuery, setSearchQuery] = useState('')
   const [spentOnly, setSpentOnly] = useState(false)
   const [exceededOnly, setExceededOnly] = useState(false)
+  const [excludedOnly, setExcludedOnly] = useState(false)
   const touchStartXRef = useRef<number | null>(null)
 
   // Which sub-tab (Fixed vs Variable) is stored in the URL, not component
@@ -120,6 +121,9 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
   const savingsCategoryId = (categoriesData?.categories ?? []).find(
     (c) => c.name === 'Savings' && c.isSystem,
   )?.id
+  const incomeCategoryId = (categoriesData?.categories ?? []).find(
+    (c) => c.name === 'Income' && c.isSystem,
+  )?.id
 
   const fixedTxs = fixedData?.transactions ?? []
   const variableTxs = variableData?.transactions ?? []
@@ -133,9 +137,14 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
 
   // Fixed/variable totals feed only the panel's overall grand-total line —
   // per-tab totals were removed from the tab labels themselves (too much
-  // visual weight on mobile for little value).
-  const fixedPlannedTotal = fixedTxs.reduce((sum, tx) => sum + txPlannedAmount(tx), 0)
-  const variableTotal = variableTxs.reduce((sum, tx) => sum + txAmount(tx), 0)
+  // visual weight on mobile for little value). Excluded transactions (manually
+  // flagged, or Income-category — e.g. payroll deposits) never count here.
+  const fixedPlannedTotal = fixedTxs
+    .filter((tx) => !isTransactionExcluded(tx, incomeCategoryId))
+    .reduce((sum, tx) => sum + txPlannedAmount(tx), 0)
+  const variableTotal = variableTxs
+    .filter((tx) => !isTransactionExcluded(tx, incomeCategoryId))
+    .reduce((sum, tx) => sum + txAmount(tx), 0)
   const grandTotal = fixedPlannedTotal + variableTotal
 
   // Per-transaction IDs where the transaction is the one that pushed its category
@@ -148,7 +157,7 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
       const p = Number(a.plannedAmount?.units ?? 0n) + (a.plannedAmount?.nanos ?? 0) / 1e9
       plannedByCat.set(a.categoryId, (plannedByCat.get(a.categoryId) ?? 0) + p)
     })
-    fixedTxs.forEach((tx) => {
+    fixedTxs.filter((tx) => !isTransactionExcluded(tx, incomeCategoryId)).forEach((tx) => {
       if (!tx.categoryId) return
       plannedByCat.set(tx.categoryId, (plannedByCat.get(tx.categoryId) ?? 0) + txPlannedAmount(tx))
     })
@@ -157,9 +166,10 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
       if (!fe.categoryId) return
       plannedByCat.set(fe.categoryId, (plannedByCat.get(fe.categoryId) ?? 0) + fixedExpensePlannedAmount(fe))
     })
-    // Group variable txs by category, then walk chronologically
+    // Group variable txs by category, then walk chronologically. Excluded
+    // transactions (manually flagged, or Income) never count toward this.
     const txsByCat = new Map<number, Transaction[]>()
-    variableTxs.forEach((tx) => {
+    variableTxs.filter((tx) => !isTransactionExcluded(tx, incomeCategoryId)).forEach((tx) => {
       if (!txsByCat.has(tx.categoryId)) txsByCat.set(tx.categoryId, [])
       txsByCat.get(tx.categoryId)!.push(tx)
     })
@@ -188,6 +198,7 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
   const sharedTableProps = {
     isEditable,
     savingsCategoryId,
+    incomeCategoryId,
     budgetPeriodId,
     budgetProfileId,
     categoryMap,
@@ -197,9 +208,11 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
     searchQuery,
     spentOnly,
     exceededOnly,
+    excludedOnly,
     overBudgetTxIds,
     onToggleSpentOnly: () => setSpentOnly((v) => !v),
     onToggleExceededOnly: () => setExceededOnly((v) => !v),
+    onToggleExcludedOnly: () => setExcludedOnly((v) => !v),
     onDeleted: refresh,
     onEdit: setEditTarget,
     onRefresh: refresh,
@@ -271,6 +284,16 @@ export function TransactionsPanel({ budgetPeriodId, budgetProfileId, isEditable 
               {t('filter.exceededOnly')}
             </ToggleButton>
           </>
+        )}
+        {!isMobile && (
+          <ToggleButton
+            value="excludedOnly"
+            selected={excludedOnly}
+            onChange={() => setExcludedOnly((v) => !v)}
+            size="small"
+          >
+            {t('filter.excludedOnly')}
+          </ToggleButton>
         )}
       </Box>
 

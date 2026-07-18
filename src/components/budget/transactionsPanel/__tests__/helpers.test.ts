@@ -5,6 +5,7 @@ import {
   matchesSearch,
   compareTransactions,
   groupTransactionsByDay,
+  isTransactionExcluded,
 } from '../helpers'
 import type { Transaction, Category, PaymentMethod, BudgetPerson } from '@/gen/wellspent/v1/budget_pb'
 
@@ -29,6 +30,7 @@ function makeTransaction(overrides: Partial<Transaction> = {}): Transaction {
     isPaid: false,
     paidAt: { seconds: 0n, nanos: 0 },
     fixedExpenseId: '',
+    isExcluded: false,
     ...overrides,
   } as Transaction
 }
@@ -147,6 +149,28 @@ describe('compareTransactions', () => {
     const a = makeTransaction({ id: 'a', name: 'Same' })
     const b = makeTransaction({ id: 'b', name: 'Same' })
     expect(compareTransactions(a, b, 'name', 'asc', categoryMap, methodMap, personMap)).toBeLessThan(0)
+  })
+})
+
+describe('isTransactionExcluded', () => {
+  it('returns true when manually flagged', () => {
+    const tx = makeTransaction({ isExcluded: true, categoryId: 1 })
+    expect(isTransactionExcluded(tx, 99)).toBe(true)
+  })
+
+  it('returns true when the category is the Income category', () => {
+    const tx = makeTransaction({ isExcluded: false, categoryId: 42 })
+    expect(isTransactionExcluded(tx, 42)).toBe(true)
+  })
+
+  it('returns false when neither flagged nor Income category', () => {
+    const tx = makeTransaction({ isExcluded: false, categoryId: 1 })
+    expect(isTransactionExcluded(tx, 42)).toBe(false)
+  })
+
+  it('returns false when incomeCategoryId is not provided', () => {
+    const tx = makeTransaction({ isExcluded: false, categoryId: 1 })
+    expect(isTransactionExcluded(tx, undefined)).toBe(false)
   })
 })
 
