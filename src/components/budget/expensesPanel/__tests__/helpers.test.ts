@@ -49,13 +49,28 @@ describe('computeActualTotals', () => {
     expect(uncategorized).toBe(30)
   })
 
-  it('sums multiple uncategorized transactions, including negative (received) amounts', () => {
+  it('sums multiple uncategorized spent amounts', () => {
     const txs = [
       makeTransaction({ categoryId: 0, amount: money(30n) }),
-      makeTransaction({ categoryId: 0, amount: money(-10n) }),
+      makeTransaction({ categoryId: 0, amount: money(15n) }),
     ]
     const { uncategorized } = computeActualTotals(txs, pmPersonMap)
-    expect(uncategorized).toBe(20)
+    expect(uncategorized).toBe(45)
+  })
+
+  it('ignores a negative (received) uncategorized amount rather than letting it reduce the total', () => {
+    const txs = [makeTransaction({ categoryId: 0, amount: money(-500n) })]
+    const { uncategorized } = computeActualTotals(txs, pmPersonMap)
+    expect(uncategorized).toBe(0)
+  })
+
+  it('does not let a large uncategorized receipt net against real uncategorized spend', () => {
+    const txs = [
+      makeTransaction({ categoryId: 0, amount: money(30n) }),
+      makeTransaction({ categoryId: 0, amount: money(-2000n) }), // e.g. a misclassified payroll deposit
+    ]
+    const { uncategorized } = computeActualTotals(txs, pmPersonMap)
+    expect(uncategorized).toBe(30)
   })
 
   it('excludes unpaid fixed transactions', () => {

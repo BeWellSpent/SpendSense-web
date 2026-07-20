@@ -14,7 +14,12 @@ export interface ActualTotals {
 // Fixed transactions only contribute once marked paid; variable always count.
 // A transaction with no category can't be attributed to any category's plan,
 // but it's still real, fully-unplanned spend — tracked separately so it isn't
-// silently dropped from the plan summary's total.
+// silently dropped from the plan summary's total. Only positive (spent)
+// amounts count toward it: a negative (received) amount isn't spend, and a
+// category's own actual-vs-plan comparison can likewise only ever add to the
+// overall total, never subtract from it — an uncategorized "received"
+// transaction (most often a misclassified income/payroll deposit) shouldn't
+// be able to net out real overspend elsewhere and produce a negative total.
 export function computeActualTotals(transactions: Transaction[], pmPersonMap: Map<string, bigint>): ActualTotals {
   const byCat = new Map<number, number>()
   const byPersonCat = new Map<string, number>()
@@ -23,7 +28,7 @@ export function computeActualTotals(transactions: Transaction[], pmPersonMap: Ma
     if (tx.transactionTypeId === 1 && !tx.isPaid) continue
     const amt = parseMoney(tx.amount?.units ?? 0n, tx.amount?.nanos ?? 0)
     if (!tx.categoryId) {
-      uncategorized += amt
+      if (amt > 0) uncategorized += amt
       continue
     }
     byCat.set(tx.categoryId, (byCat.get(tx.categoryId) ?? 0) + amt)
