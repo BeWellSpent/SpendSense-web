@@ -13,6 +13,7 @@ import { useSnackbar } from '@/components/ui/ErrorSnackbar'
 import { logger } from '@/lib/logger'
 import { formatMoneyFromNumber } from '@/lib/format'
 import { parseMoney, moneyToProto, computeCategoryRow, computeActualTotals, type NotDueInfo } from './expensesPanel/helpers'
+import { isTransactionExcluded } from './transactionsPanel/helpers'
 import { ExpenseChart, type ExpenseChartDatum } from './expensesPanel/ExpenseChart'
 import { CategoryCardMobile } from './expensesPanel/CategoryCardMobile'
 import { CategoryTableRow } from './expensesPanel/CategoryTableRow'
@@ -181,7 +182,12 @@ export function ExpensesPanel({ budgetProfileId, budgetPeriodId, canEdit = true 
   const categories = categoriesData?.categories ?? []
   const people = peopleData?.people ?? []
   const allocations = allocationsData?.allocations ?? []
-  const transactions = transactionsData?.transactions ?? []
+  // Income-category (e.g. payroll) and manually-excluded transactions never
+  // belong in an expense plan — same "excluded from totals" rule as the
+  // Transactions view, applied here at the source so every downstream
+  // computation (chart, per-category actuals, plan summary) inherits it.
+  const incomeCategoryId = categories.find((c) => c.name === 'Income' && c.isSystem)?.id
+  const transactions = (transactionsData?.transactions ?? []).filter((tx) => !isTransactionExcluded(tx, incomeCategoryId))
   const paymentMethods = paymentMethodsData?.methods ?? []
   const savingsSources = savingsData?.sources ?? []
   const incomeSources = incomeData?.sources ?? []
