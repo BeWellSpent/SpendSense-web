@@ -58,19 +58,24 @@ describe('computeActualTotals', () => {
     expect(uncategorized).toBe(45)
   })
 
-  it('ignores a negative (received) uncategorized amount rather than letting it reduce the total', () => {
-    const txs = [makeTransaction({ categoryId: 0, amount: money(-500n) })]
-    const { uncategorized } = computeActualTotals(txs, pmPersonMap)
-    expect(uncategorized).toBe(0)
-  })
-
-  it('does not let a large uncategorized receipt net against real uncategorized spend', () => {
+  it('nets a negative (received) uncategorized amount against uncategorized spend', () => {
+    // A partial reimbursement for something you paid for means you
+    // effectively spent less — same netting a category's own actual does.
     const txs = [
-      makeTransaction({ categoryId: 0, amount: money(30n) }),
-      makeTransaction({ categoryId: 0, amount: money(-2000n) }), // e.g. a misclassified payroll deposit
+      makeTransaction({ categoryId: 0, amount: money(100n) }),
+      makeTransaction({ categoryId: 0, amount: money(-30n) }),
     ]
     const { uncategorized } = computeActualTotals(txs, pmPersonMap)
-    expect(uncategorized).toBe(30)
+    expect(uncategorized).toBe(70)
+  })
+
+  it('allows uncategorized net to go negative when receipts outweigh spend', () => {
+    // Not a bug: if this happens for a real transaction it means something
+    // (e.g. a payroll deposit) is miscategorized and belongs in a category
+    // that gets excluded upstream, not silently clamped here.
+    const txs = [makeTransaction({ categoryId: 0, amount: money(-500n) })]
+    const { uncategorized } = computeActualTotals(txs, pmPersonMap)
+    expect(uncategorized).toBe(-500)
   })
 
   it('excludes unpaid fixed transactions', () => {
