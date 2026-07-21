@@ -57,15 +57,6 @@ function actualColor(actual: number, plannedTotal: number): string | undefined {
   return 'success.main'
 }
 
-export function spentColor(spent: number, planned: number): string {
-  if (planned <= 0) return 'success.main'
-  const pct = (spent / planned) * 100
-  if (pct >= 90) return 'error.main'
-  if (pct >= 75) return '#f59e0b'
-  if (pct >= 50) return '#eab308'
-  return 'success.main'
-}
-
 // Savings rows use inverted thresholds: more saved = greener
 function savingsActualColor(actual: number, plannedTotal: number): string | undefined {
   if (plannedTotal <= 0) return undefined

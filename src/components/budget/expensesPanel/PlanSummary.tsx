@@ -1,7 +1,6 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { spentColor } from './helpers'
 import Box from '@mui/material/Box'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
@@ -9,11 +8,10 @@ import Typography from '@mui/material/Typography'
 interface Props {
   totalCommitted: number
   remainder: number
-  totalActualSpent: number
   formatMoney: (amount: number) => string
 }
 
-export function PlanSummary({ totalCommitted, remainder, totalActualSpent, formatMoney }: Props) {
+export function PlanSummary({ totalCommitted, remainder, formatMoney }: Props) {
   const t = useTranslations('budget.expenses')
 
   if (totalCommitted <= 0) return null
@@ -40,12 +38,6 @@ export function PlanSummary({ totalCommitted, remainder, totalActualSpent, forma
             color={remainder < 0 ? 'error.main' : 'success.main'}
           >
             {formatMoney(remainder)}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" color="text.secondary">{t('spent')}</Typography>
-          <Typography variant="body2" fontWeight={700} sx={{ ml: 2, whiteSpace: 'nowrap', color: spentColor(totalActualSpent, totalCommitted) }}>
-            {formatMoney(totalActualSpent)}
           </Typography>
         </Box>
       </Box>

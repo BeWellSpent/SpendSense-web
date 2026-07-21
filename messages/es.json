@@ -108,8 +108,18 @@
       "failedToLoad": "No se pudo cargar el presupuesto.",
       "noActivePeriod": "No se encontró un período activo.",
       "expensePlan": "Plan de Gastos",
+      "expenseOverview": "Resumen",
       "transactions": "Transacciones",
       "toReview": "Por Revisar"
+    },
+    "overview": {
+      "title": "Resumen de Gastos",
+      "category": "Categoría",
+      "actual": "Real",
+      "planned": "Planificado",
+      "total": "Total",
+      "global": "global",
+      "noData": "No hay datos de gastos aún para este período."
     },
     "review": {
       "description": "Estas transacciones importadas pueden coincidir con un gasto fijo. Confirma para marcar el gasto fijo como pagado y eliminar el duplicado, o descarta para conservarla como transacción regular.",

@@ -20,7 +20,6 @@ interface Props {
   rowData: CategoryRowData
   allocMap: Map<string, ExpenseAllocation>
   fixedPlannedByPersonCat: Map<string, number>
-  txnActualByPersonCat: Map<string, number>
   savingsByPerson: Map<string, number>
   canEdit: boolean
   formatMoney: (amount: number) => string
@@ -30,12 +29,11 @@ interface Props {
 }
 
 export function CategoryCardMobile({
-  cat, people, rowData, allocMap, fixedPlannedByPersonCat, txnActualByPersonCat, savingsByPerson,
+  cat, people, rowData, allocMap, fixedPlannedByPersonCat, savingsByPerson,
   canEdit, formatMoney, onRemoveCategory, onOpenEditDialog, onEditFixedExpense,
 }: Props) {
   const t = useTranslations('budget.expenses')
-  const { isSavings, notDueInfo, isNotDue, isFixedOnly, actual, plannedTotal, colorFn } = rowData
-  const headerActualColor = isNotDue ? undefined : colorFn(actual, plannedTotal)
+  const { isSavings, notDueInfo, isNotDue, isFixedOnly, plannedTotal } = rowData
 
   return (
     <Paper variant="outlined" sx={{ p: 1.5 }}>
@@ -64,12 +62,6 @@ export function CategoryCardMobile({
               {plannedTotal > 0 ? formatMoney(plannedTotal) : '—'}
             </Typography>
           </Box>
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography variant="caption" color="text.secondary" display="block">{t('actual')}</Typography>
-            <Typography variant="body2" fontWeight={600} sx={{ color: actual < 0 ? 'success.main' : headerActualColor }}>
-              {actual > 0 ? formatMoney(actual) : actual < 0 ? `+${formatMoney(-actual)}` : '—'}
-            </Typography>
-          </Box>
           {canEdit && !isSavings && !isFixedOnly && (
             <IconButton size="small" onClick={() => onRemoveCategory(cat.id)}>
               <DeleteOutlineIcon sx={{ fontSize: 16 }} />
@@ -88,7 +80,6 @@ export function CategoryCardMobile({
           <Divider sx={{ my: 1 }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
             {people.map((p) => {
-              const personActual = txnActualByPersonCat.get(`${cat.id}:${p.id}`) ?? 0
               let val: number | undefined
               if (isSavings) {
                 const sv = savingsByPerson.get(p.id.toString())
@@ -116,12 +107,6 @@ export function CategoryCardMobile({
                   </Typography>
                   <Typography variant="body2" sx={{ minWidth: 64, textAlign: 'right', color: 'text.secondary' }}>
                     {displayVal != null ? formatMoney(displayVal) : '—'}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{ minWidth: 64, textAlign: 'right', color: personActual < 0 ? 'success.main' : (colorFn(personActual, displayVal ?? 0) || 'text.secondary') }}
-                  >
-                    {personActual > 0 ? formatMoney(personActual) : personActual < 0 ? `+${formatMoney(-personActual)}` : '—'}
                   </Typography>
                   {canEdit && !isSavings && !isFixedOnly && (
                     <IconButton size="small" onClick={() => onOpenEditDialog(cat, p.id, p.userName, val, alloc)}>

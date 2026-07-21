@@ -24,9 +24,11 @@ interface Props {
   onChartGroupingChange: (v: 'person' | 'category') => void
   formatMoney: (amount: number) => string
   isMobile: boolean
+  barLabel?: string
+  noDataText?: string
 }
 
-export function ExpenseChart({ chartData, chartType, chartGrouping, onChartTypeChange, onChartGroupingChange, formatMoney, isMobile }: Props) {
+export function ExpenseChart({ chartData, chartType, chartGrouping, onChartTypeChange, onChartGroupingChange, formatMoney, isMobile, barLabel, noDataText }: Props) {
   const t = useTranslations('budget.expenses')
 
   return (
@@ -52,7 +54,7 @@ export function ExpenseChart({ chartData, chartType, chartGrouping, onChartTypeC
         </ToggleButtonGroup>
       </Box>
       {chartData.length === 0 ? (
-        <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{t('chart.noData')}</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>{noDataText ?? t('chart.noData')}</Typography>
       ) : (
         <>
           {chartType === 'pie' ? (
@@ -72,7 +74,7 @@ export function ExpenseChart({ chartData, chartType, chartGrouping, onChartTypeC
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" interval={0} />
                 <YAxis tickFormatter={(v) => `$${v}`} tick={{ fontSize: 11 }} />
                 <RechartTooltip formatter={(v) => typeof v === 'number' ? formatMoney(v) : ''} />
-                <Bar dataKey="value" name={t('plannedAmount')} radius={[4, 4, 0, 0]}>
+                <Bar dataKey="value" name={barLabel ?? t('plannedAmount')} radius={[4, 4, 0, 0]}>
                   {chartData.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}

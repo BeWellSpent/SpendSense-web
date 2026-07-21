@@ -108,8 +108,18 @@
       "failedToLoad": "Failed to load budget.",
       "noActivePeriod": "No active period found.",
       "expensePlan": "Expense Plan",
+      "expenseOverview": "Overview",
       "transactions": "Transactions",
       "toReview": "To Review"
+    },
+    "overview": {
+      "title": "Expense Overview",
+      "category": "Category",
+      "actual": "Actual",
+      "planned": "Planned",
+      "total": "Total",
+      "global": "global",
+      "noData": "No spending data yet for this period."
     },
     "review": {
       "description": "These imported transactions may match a fixed expense. Confirm to mark the fixed expense as paid and remove the duplicate, or dismiss to keep it as a regular transaction.",

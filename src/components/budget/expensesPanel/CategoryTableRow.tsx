@@ -36,7 +36,7 @@ export function CategoryTableRow({
   canEdit, currency, locale, formatMoney, onRemoveCategory, onUpsert, onEditFixedExpense,
 }: Props) {
   const t = useTranslations('budget.expenses')
-  const { isSavings, notDueInfo, isNotDue, isFixedOnly, actual, plannedTotal, color } = rowData
+  const { isSavings, notDueInfo, isNotDue, isFixedOnly, plannedTotal } = rowData
 
   return (
     <TableRow hover>
@@ -109,13 +109,6 @@ export function CategoryTableRow({
         {plannedTotal > 0
           ? <Typography component="span" variant="body2" color={isNotDue ? 'text.disabled' : undefined}>{formatMoney(plannedTotal)}</Typography>
           : <Typography component="span" variant="body2" color="text.disabled">—</Typography>}
-      </TableCell>
-      <TableCell align="right" sx={{ color: actual < 0 ? 'success.main' : color }}>
-        {actual > 0
-          ? formatMoney(actual)
-          : actual < 0
-            ? `+${formatMoney(-actual)}`
-            : <Typography component="span" variant="body2" color="text.disabled">—</Typography>}
       </TableCell>
       <TableCell align="right">
         {canEdit && !isSavings && !isFixedOnly && (

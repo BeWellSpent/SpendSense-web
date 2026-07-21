@@ -13,6 +13,7 @@ import { useClient } from '@/hooks/useClient'
 import { useBudgetRole } from '@/hooks/useBudgetRole'
 import { TransactionsPanel } from './TransactionsPanel'
 import { ExpensesPanel } from './ExpensesPanel'
+import { ExpenseOverviewPanel } from './ExpenseOverviewPanel'
 import { TransactionReviewPanel, transactionReviewCount } from './TransactionReviewPanel'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -26,10 +27,11 @@ import BottomNavigationAction from '@mui/material/BottomNavigationAction'
 import Badge from '@mui/material/Badge'
 import AddIcon from '@mui/icons-material/Add'
 import AssignmentIcon from '@mui/icons-material/Assignment'
+import BarChartIcon from '@mui/icons-material/BarChart'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import RuleIcon from '@mui/icons-material/Rule'
 
-type ActiveView = 'expenses' | 'transactions' | 'review'
+type ActiveView = 'expenses' | 'overview' | 'transactions' | 'review'
 
 interface Props {
   budgetId: string
@@ -47,7 +49,7 @@ export function BudgetView({ budgetId }: Props) {
   // Which top-level section (Expense Plan vs Transactions) is stored in the
   // URL, not component state, so a page reload lands back where you were.
   const rawView = searchParams.get('view')
-  const activeView: ActiveView = rawView === 'transactions' ? 'transactions' : rawView === 'review' ? 'review' : 'expenses'
+  const activeView: ActiveView = rawView === 'transactions' ? 'transactions' : rawView === 'review' ? 'review' : rawView === 'overview' ? 'overview' : 'expenses'
   const [addTransactionOpen, setAddTransactionOpen] = useState(false)
 
   function setActiveView(view: ActiveView) {
@@ -117,6 +119,7 @@ export function BudgetView({ budgetId }: Props) {
           sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
         >
           <Tab value="expenses" label={t('expensePlan')} icon={<AssignmentIcon />} iconPosition="start" />
+          <Tab value="overview" label={t('expenseOverview')} icon={<BarChartIcon />} iconPosition="start" />
           <Tab value="transactions" label={t('transactions')} icon={<ReceiptLongIcon />} iconPosition="start" />
           <Tab
             value="review"
@@ -135,6 +138,8 @@ export function BudgetView({ budgetId }: Props) {
       <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}>
         {activeView === 'expenses' ? (
           <ExpensesPanel budgetProfileId={budgetId} budgetPeriodId={activePeriod?.id} canEdit={canEdit} />
+        ) : activeView === 'overview' ? (
+          <ExpenseOverviewPanel budgetProfileId={budgetId} budgetPeriodId={activePeriod?.id} />
         ) : activeView === 'review' ? (
           <TransactionReviewPanel
             budgetProfileId={budgetId}
@@ -186,6 +191,11 @@ export function BudgetView({ budgetId }: Props) {
               value="expenses"
               label={t('expensePlan')}
               icon={<AssignmentIcon />}
+            />
+            <BottomNavigationAction
+              value="overview"
+              label={t('expenseOverview')}
+              icon={<BarChartIcon />}
             />
             <BottomNavigationAction
               value="transactions"
