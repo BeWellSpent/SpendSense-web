@@ -82,22 +82,7 @@ export function ExpenseChart({ chartData, chartType, chartGrouping, onChartTypeC
               </BarChart>
             </ResponsiveContainer>
           )}
-          {/* Custom legend with per-item values and grand total */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, mt: 1 }}>
-            {chartData.map((entry, i) => (
-              <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: entry.color, flexShrink: 0 }} />
-                <Typography variant="caption">
-                  {entry.name} ({formatMoney(entry.value)})
-                </Typography>
-              </Box>
-            ))}
-            {chartData.length > 1 && (
-              <Typography variant="caption" fontWeight={700} sx={{ mt: 0.5 }}>
-                Total: {formatMoney(chartData.reduce((s, d) => s + d.value, 0))}
-              </Typography>
-            )}
-          </Box>
+
         </>
       )}
     </Box>
