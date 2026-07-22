@@ -30,8 +30,9 @@ export function txAmount(t: Transaction): number {
 
 // Maps a variable transaction's ID to the name of the fixed-type transaction
 // it's pending review against. Only pending reviews are included — a
-// confirmed review's transaction is already excluded from ListTransactions
-// server-side, and a dismissed review is no longer an active link.
+// confirmed review's transaction is excluded from totals (is_excluded, same
+// as Income) but still visible as a normal row, so it no longer needs the
+// "pending" badge; a dismissed review is no longer an active link either.
 export function buildPendingReviewMatchMap(reviews: TransactionReview[]): Map<string, string> {
   return new Map(
     reviews
