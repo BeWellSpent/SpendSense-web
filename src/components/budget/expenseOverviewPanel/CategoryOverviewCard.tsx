@@ -1,8 +1,9 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import type { Category, BudgetPerson, ExpenseAllocation } from '@/gen/wellspent/v1/budget_pb'
+import type { Category, BudgetPerson, ExpenseAllocation, Transaction, PaymentMethod } from '@/gen/wellspent/v1/budget_pb'
 import { parseMoney } from '../expensesPanel/helpers'
+import { CategoryTransactionList } from './CategoryTransactionList'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import Collapse from '@mui/material/Collapse'
@@ -25,22 +26,28 @@ interface Props {
   isExpanded: boolean
   onToggle: () => void
   formatMoney: (v: number) => string
+  catTransactions: Transaction[]
+  categoryMap: Map<number, Category>
+  methodMap: Map<string, PaymentMethod>
+  personMap: Map<string, BudgetPerson>
 }
 
 export function CategoryOverviewCard({
   cat, people, actual, planned, txnActualByPersonCat, allocMap, savingsByPerson,
   isSavings, isExpanded, onToggle, formatMoney,
+  catTransactions, categoryMap, methodMap, personMap,
 }: Props) {
   const t = useTranslations('budget.overview')
   const isOver = planned > 0 && actual > planned
   const actualColor = actual > 0 ? (isOver ? 'error.main' : 'success.main') : 'text.disabled'
   const hasPeople = people.length > 1
+  const isExpandable = hasPeople || catTransactions.length > 0
 
   return (
     <Paper variant="outlined" sx={{ p: 1.5 }}>
       <Box
-        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, cursor: hasPeople ? 'pointer' : 'default' }}
-        onClick={hasPeople ? onToggle : undefined}
+        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, cursor: isExpandable ? 'pointer' : 'default' }}
+        onClick={isExpandable ? onToggle : undefined}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1 }}>
           {cat.color && (
@@ -74,7 +81,7 @@ export function CategoryOverviewCard({
               sx={{ fontSize: '0.65rem', height: 18 }}
             />
           )}
-          {hasPeople && (
+          {isExpandable && (
             <IconButton size="small" onClick={(e) => { e.stopPropagation(); onToggle() }}>
               {isExpanded ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
             </IconButton>
@@ -82,44 +89,57 @@ export function CategoryOverviewCard({
         </Box>
       </Box>
 
-      {hasPeople && (
+      {isExpandable && (
         <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-          <Divider sx={{ my: 1 }} />
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-            {people.map((p) => {
-              const personActual = txnActualByPersonCat.get(`${cat.id}:${p.id}`) ?? 0
-              let personPlanned = 0
-              if (isSavings) {
-                personPlanned = savingsByPerson.get(p.id.toString()) ?? 0
-              } else {
-                const alloc = allocMap.get(`${cat.id}:${p.id}`)
-                personPlanned = alloc
-                  ? parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
-                  : 0
-              }
-              if (personActual === 0 && personPlanned === 0) return null
-              const isPersonOver = personPlanned > 0 && personActual > personPlanned
-              return (
-                <Box key={p.id.toString()} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {p.color && (
-                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: p.color, flexShrink: 0 }} />
-                  )}
-                  <Typography variant="body2" sx={{ flex: 1, color: p.color || 'text.primary' }} noWrap>
-                    {p.userName}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{ minWidth: 64, textAlign: 'right', color: isPersonOver ? 'error.main' : (personActual > 0 ? 'success.main' : 'text.disabled') }}
-                  >
-                    {personActual > 0 ? formatMoney(personActual) : '—'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ minWidth: 64, textAlign: 'right' }}>
-                    {personPlanned > 0 ? formatMoney(personPlanned) : '—'}
-                  </Typography>
-                </Box>
-              )
-            })}
-          </Box>
+          {hasPeople && (
+            <>
+              <Divider sx={{ my: 1 }} />
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                {people.map((p) => {
+                  const personActual = txnActualByPersonCat.get(`${cat.id}:${p.id}`) ?? 0
+                  let personPlanned = 0
+                  if (isSavings) {
+                    personPlanned = savingsByPerson.get(p.id.toString()) ?? 0
+                  } else {
+                    const alloc = allocMap.get(`${cat.id}:${p.id}`)
+                    personPlanned = alloc
+                      ? parseMoney(alloc.plannedAmount?.units ?? 0n, alloc.plannedAmount?.nanos ?? 0)
+                      : 0
+                  }
+                  if (personActual === 0 && personPlanned === 0) return null
+                  const isPersonOver = personPlanned > 0 && personActual > personPlanned
+                  return (
+                    <Box key={p.id.toString()} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {p.color && (
+                        <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: p.color, flexShrink: 0 }} />
+                      )}
+                      <Typography variant="body2" sx={{ flex: 1, color: p.color || 'text.primary' }} noWrap>
+                        {p.userName}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{ minWidth: 64, textAlign: 'right', color: isPersonOver ? 'error.main' : (personActual > 0 ? 'success.main' : 'text.disabled') }}
+                      >
+                        {personActual > 0 ? formatMoney(personActual) : '—'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 64, textAlign: 'right' }}>
+                        {personPlanned > 0 ? formatMoney(personPlanned) : '—'}
+                      </Typography>
+                    </Box>
+                  )
+                })}
+              </Box>
+            </>
+          )}
+          {catTransactions.length > 0 && (
+            <CategoryTransactionList
+              transactions={catTransactions}
+              isMobile
+              categoryMap={categoryMap}
+              methodMap={methodMap}
+              personMap={personMap}
+            />
+          )}
         </Collapse>
       )}
     </Paper>

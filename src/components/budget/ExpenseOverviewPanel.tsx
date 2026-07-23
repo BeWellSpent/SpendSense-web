@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useQuery } from '@tanstack/react-query'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { BudgetService } from '@/gen/wellspent/v1/budget_connect'
-import type { ExpenseAllocation } from '@/gen/wellspent/v1/budget_pb'
+import type { ExpenseAllocation, Category, PaymentMethod, BudgetPerson, Transaction } from '@/gen/wellspent/v1/budget_pb'
 import { useClient } from '@/hooks/useClient'
 import { useCurrency } from '@/hooks/useCurrency'
 import { formatMoneyFromNumber } from '@/lib/format'
@@ -92,6 +92,18 @@ export function ExpenseOverviewPanel({ budgetProfileId, budgetPeriodId }: Props)
   const paymentMethods = paymentMethodsData?.methods ?? []
   const savingsSources = savingsData?.sources ?? []
   const fixedExpenses = (fixedExpensesData?.expenses ?? []).filter((fe) => fe.isActive)
+
+  const categoryMap = new Map<number, Category>(categories.map((c) => [c.id, c]))
+  const methodMap = new Map<string, PaymentMethod>(paymentMethods.map((pm) => [pm.id, pm]))
+  const personMap = new Map<string, BudgetPerson>(people.map((p) => [p.id.toString(), p]))
+
+  const transactionsByCatId = new Map<number, Transaction[]>()
+  for (const tx of transactions) {
+    if (!tx.categoryId) continue
+    if (tx.transactionTypeId === 1 && !tx.isPaid) continue  // unpaid fixed: not yet spent
+    if (!transactionsByCatId.has(tx.categoryId)) transactionsByCatId.set(tx.categoryId, [])
+    transactionsByCatId.get(tx.categoryId)!.push(tx)
+  }
 
   const pmPersonMap = new Map<string, bigint>()
   for (const pm of paymentMethods) {
@@ -237,6 +249,10 @@ export function ExpenseOverviewPanel({ budgetProfileId, budgetPeriodId }: Props)
               isExpanded={expandedCats.has(cat.id)}
               onToggle={() => toggleCategory(cat.id)}
               formatMoney={formatMoney}
+              catTransactions={transactionsByCatId.get(cat.id) ?? []}
+              categoryMap={categoryMap}
+              methodMap={methodMap}
+              personMap={personMap}
             />
           ))}
           {uncategorizedActual !== 0 && (
@@ -301,6 +317,10 @@ export function ExpenseOverviewPanel({ budgetProfileId, budgetPeriodId }: Props)
                   isExpanded={expandedCats.has(cat.id)}
                   onToggle={() => toggleCategory(cat.id)}
                   formatMoney={formatMoney}
+                  catTransactions={transactionsByCatId.get(cat.id) ?? []}
+                  categoryMap={categoryMap}
+                  methodMap={methodMap}
+                  personMap={personMap}
                 />
               ))}
               {uncategorizedActual !== 0 && (

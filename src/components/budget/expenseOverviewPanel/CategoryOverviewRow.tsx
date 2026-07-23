@@ -1,8 +1,9 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import type { Category, BudgetPerson, ExpenseAllocation } from '@/gen/wellspent/v1/budget_pb'
+import type { Category, BudgetPerson, ExpenseAllocation, Transaction, PaymentMethod } from '@/gen/wellspent/v1/budget_pb'
 import { parseMoney } from '../expensesPanel/helpers'
+import { CategoryTransactionList } from './CategoryTransactionList'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
@@ -24,26 +25,32 @@ interface Props {
   isExpanded: boolean
   onToggle: () => void
   formatMoney: (v: number) => string
+  catTransactions: Transaction[]
+  categoryMap: Map<number, Category>
+  methodMap: Map<string, PaymentMethod>
+  personMap: Map<string, BudgetPerson>
 }
 
 export function CategoryOverviewRow({
   cat, people, actual, planned, txnActualByPersonCat, allocMap, savingsByPerson,
   isSavings, isExpanded, onToggle, formatMoney,
+  catTransactions, categoryMap, methodMap, personMap,
 }: Props) {
   const t = useTranslations('budget.overview')
   const isOver = planned > 0 && actual > planned
   const actualColor = actual > 0 ? (isOver ? 'error.main' : 'success.main') : 'text.disabled'
   const hasPeople = people.length > 1
+  const isExpandable = hasPeople || catTransactions.length > 0
 
   return (
     <>
       <TableRow
         hover
-        sx={{ cursor: hasPeople ? 'pointer' : 'default' }}
-        onClick={hasPeople ? onToggle : undefined}
+        sx={{ cursor: isExpandable ? 'pointer' : 'default' }}
+        onClick={isExpandable ? onToggle : undefined}
       >
         <TableCell sx={{ width: 36, py: 0.5, pr: 0 }}>
-          {hasPeople && (
+          {isExpandable && (
             <IconButton size="small" onClick={(e) => { e.stopPropagation(); onToggle() }}>
               {isExpanded ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
             </IconButton>
@@ -136,6 +143,19 @@ export function CategoryOverviewRow({
           </TableRow>
         )
       })}
+      {isExpanded && catTransactions.length > 0 && (
+        <TableRow>
+          <TableCell colSpan={5} sx={{ p: 0 }}>
+            <CategoryTransactionList
+              transactions={catTransactions}
+              isMobile={false}
+              categoryMap={categoryMap}
+              methodMap={methodMap}
+              personMap={personMap}
+            />
+          </TableCell>
+        </TableRow>
+      )}
     </>
   )
 }
